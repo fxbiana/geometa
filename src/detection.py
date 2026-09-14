@@ -1,8 +1,40 @@
+from PIL import Image
+from pathlib import Path
 from metas import GeoMetas
 
-def clue_detection():
-    metas = []
+def detect_architecture():
+    return []
 
+
+def detect_signage():
+    return []
+
+
+def detect_vehicle():
+    return []
+
+
+def detect_terrain():
+    return []
+
+
+def detect_language():
+    return []
+
+
+def detect_coverage():
+    return []
+
+def meta_detection(image):
+    metas = []
+    metas.extend(detect_architecture())
+    metas.extend(detect_signage())
+    metas.extend(detect_vehicle())
+    metas.extend(detect_terrain())
+    metas.extend(detect_language())
+    metas.extend(detect_coverage())
+
+# hardcoded metas for testing purposes
     metas.append(
         GeoMetas(
             category="road",
@@ -46,9 +78,7 @@ def clue_detection():
             scope="region"
         )
     )
-
-
-#TODO: Build this out later, for panoramas (NOT IMAGES!!!)
+    #TODO: Build this out later, for panoramas (NOT IMAGES!!!)
     metas.append(
         GeoMetas(
             category="hemisphere",
@@ -61,3 +91,5 @@ def clue_detection():
     )
 
     return metas
+
+

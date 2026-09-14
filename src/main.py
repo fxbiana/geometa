@@ -1,14 +1,25 @@
 from metas import GeoMetas
-from detection import clue_detection
+
+from PIL import Image
+from pathlib import Path
+
+from detection import meta_detection
 from scoring import meta_score
 from scoring import score_countries
 from country_metas import country_metas
 
 
 def main():
-    metas = clue_detection()
+    image = load_image("images\\commerce_california.png")
+    metas = meta_detection(image)
     
 
+def load_image(image_path):
+    image = Image.open(image_path)
+    print(f"Loaded image: {image_path}")
+    print(f"Image size: {image.size}")
+    print(f"Image format: {image.format}")
+    return image
 
 # our observations
     print("GeoMetas observations:")
