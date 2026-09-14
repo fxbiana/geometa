@@ -1,2 +1,2 @@
-# geometa
+# GeoMetas
 fun geoguessr project!

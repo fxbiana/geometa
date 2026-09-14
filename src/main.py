@@ -1,29 +1,64 @@
 from metas import GeoMetas
-from scoring import score_country
+from scoring import meta_score
 from country_metas import country_metas
 
 def main():
-    metas = GeoMetas(
-        driving_side="right",
-        road_markings="yellow center line",
-        utility_poles="wooden"
+    metas = [
+        GeoMetas(
+            category="hemisphere",
+            feature="hemisphere",
+            value="northern",
+            confidence=0.80,
+            strength=0.40,
+            scope="hemisphere"
+        ),
+
+        GeoMetas(
+            category="road",
+            feature="driving_side",
+            value="right",
+            confidence=0.99,
+            strength=0.30,
+            scope="country"
+        ),
+
+        GeoMetas(
+            category="vegetation",
+            feature="tree_type",
+            value="tall_conifer",
+            confidence=0.84,
+            strength=0.72,
+            scope="region"
+        ),
+
+        GeoMetas(
+            category="infrastructure",
+            feature="utility_pole",
+            value="wooden",
+            confidence=0.95,
+            strength=0.50,
+            scope="region"
+        )
+    ]
+
+    print("GeoMetas observations:")
+
+    for meta in metas:
+        print(
+            f"{meta.category} | "
+            f"{meta.feature} | "
+            f"{meta.value} | "
+            f"confidence: {meta.confidence:.0%} | "
+            f"strength: {meta.strength:.0%} | "
+            f"scope: {meta.scope}"
+        )
+
+    result = meta_score(
+    metas[1],
+    country_metas["United States"]
     )
 
-    results = {}
-
-    for country, country_data in country_metas.items():
-        results[country] = score_country(metas, country_data)
-
-    ranked_results = sorted(
-        results.items(),
-        key=lambda item: item[1],
-        reverse=True
-    )
-
-    print("GeoMeta prediction:")
-
-    for country, score in ranked_results:
-        print(f"{country}: {score:.0%}")
+    print(result) 
 
 
 if __name__ == "__main__":

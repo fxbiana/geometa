@@ -1,26 +1,11 @@
-def score_country(metas, country_data):
-    score = 0
-    total_metas = 0
+def meta_score(meta, country_data):
+    country_clue = country_data.get(meta.feature)
 
-    if metas.driving_side is not None:
-        total_metas += 1
+    if country_clue is not None:
+        country_value = country_clue["value"]
+        country_weight = country_clue["weight"]
 
-        if metas.driving_side == country_data.get("driving_side"):
-            score += 1
+        if country_value == meta.value:
+            return meta.confidence * meta.strength * country_weight
 
-    if metas.road_markings is not None:
-        total_metas += 1
-
-        if metas.road_markings == country_data.get("road_markings"):
-            score += 1
-
-    if metas.utility_poles is not None:
-        total_metas += 1
-
-        if metas.utility_poles == country_data.get("utility_poles"):
-            score += 1
-
-    if total_metas == 0:
-        return 0
-
-    return score / total_metas
+    return 0
