@@ -1,2 +1,3 @@
 # geometa
-fun geoguessr project!
+fun geoguessr project using plonkit!
+https://www.plonkit.net/guide
