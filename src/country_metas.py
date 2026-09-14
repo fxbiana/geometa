@@ -4,8 +4,14 @@ country_metas = {
             "value": "right",
             "weight": 1.0
         },
-        "road_markings": "yellow center line",
-        "utility_poles": "wooden",
+        "road_markings": {
+            "value": "yellow center line",
+            "weight": 0.8
+        },
+        "utility_poles": {
+            "value": "wooden",
+            "weight": 0.5
+        }
     },
 
     "United Kingdom": {
@@ -13,8 +19,14 @@ country_metas = {
             "value": "left",
             "weight": 1.0
         },
-        "road_markings": "yellow center line",
-        "utility_poles": "wooden",
+        "road_markings": {
+            "value": "white center line",
+            "weight": 0.8
+        },
+        "utility_poles": {
+            "value": "wooden",
+            "weight": 0.5
+        }
     },
 
     "Colombia": {
@@ -22,7 +34,13 @@ country_metas = {
             "value" : "right",
             "weight": 1.0,
         },
-        "road_markings": "yellow center line",
-        "utility_poles": "wooden",
+        "road_markings": {
+            "value": "yellow center line",
+            "weight": 0.8
+        }, 
+        "utility_poles": {
+            "value": "wooden",
+            "weight": 0.5
+        } 
     },
 }
