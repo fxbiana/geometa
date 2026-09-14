@@ -1,56 +1,13 @@
 from metas import GeoMetas
+from detection import clue_detection
 from scoring import meta_score
 from scoring import score_countries
 from country_metas import country_metas
 
 
 def main():
-    metas = [
-        GeoMetas(
-            category="hemisphere",
-            feature="hemisphere",
-            value="northern",
-            confidence=0.80,
-            strength=0.40,
-            scope="hemisphere"
-        ),
-
-        GeoMetas(
-            category="road",
-            feature="driving_side",
-            value="right",
-            confidence=0.99,
-            strength=0.30,
-            scope="country"
-        ),
-
-        GeoMetas(
-            category="road",
-            feature="road_markings",
-            value="yellow center line",
-            confidence=0.90,
-            strength=0.60,
-            scope="country"
-        ),
-
-        GeoMetas(
-            category="vegetation",
-            feature="tree_type",
-            value="tall_conifer",
-            confidence=0.84,
-            strength=0.72,
-            scope="region"
-        ),
-
-        GeoMetas(
-            category="infrastructure",
-            feature="utility_pole",
-            value="wooden",
-            confidence=0.95,
-            strength=0.50,
-            scope="region"
-        )
-    ]
+    metas = clue_detection()
+    
 
 
 # our observations
