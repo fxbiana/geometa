@@ -1,3 +1,6 @@
+from PIL import Image
+from knowledge import get_clue
+
 def analyze_road(image):
     width, height = image.size
 
@@ -49,18 +52,23 @@ def analyze_road(image):
     yellow_percentage = yellow_pixels / total_pixels
 
     observations = []
+    clues = []
 
     if gray_percentage > 0.60:
         observations.append("Road region is mostly gray")
+        clues.append("gray_paved_surface")
 
     if yellow_percentage > 0.03:
         observations.append("Noticeable yellow pixels detected")
-
-    if white_percentage > 0.20:
-        observations.append("Large amount of white detected")
+        clues.append("yellow_road_marking")
 
     if dark_percentage > 0.20:
         observations.append("Road region contains many dark pixels")
+        clues.append("dark_road_surface")
+
+    if white_percentage > 0.20:
+        observations.append("Large amount of white detected")
+        clues.append("white_road_surface")
 
     if not observations:
         observations.append("No strong road color characteristics detected")
@@ -80,11 +88,14 @@ def analyze_road(image):
     print(f"Yellow pixels: {yellow_percentage:.2%}")
 
     return {
-        "average_brightness": average_brightness,
-        "gray_percentage": gray_percentage,
-        "dark_percentage": dark_percentage,
-        "bright_percentage": bright_percentage,
-        "white_percentage": white_percentage,
-        "yellow_percentage": yellow_percentage,
-        "observations": observations
+        "features": {
+            "average_brightness": average_brightness,
+            "gray_percentage": gray_percentage,
+            "dark_percentage": dark_percentage,
+            "bright_percentage": bright_percentage,
+            "white_percentage": white_percentage,
+            "yellow_percentage": yellow_percentage,
+        },
+        "observations": observations, # narrowing down observations/clues for road analysis
+        "clues": clues,
     }

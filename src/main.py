@@ -1,35 +1,9 @@
 from PIL import Image
+import json
 import os
-# from detection import meta_detection
-# from scoring import score_countries
 from features.road import analyze_road
 from dataset import load_labels
 from metas import create_meta_result
-
-    # print("\nGeoMetas observations:")
-    # for meta in metas:
-    #     print(
-    #         f"{meta.category} | {meta.feature} | {meta.value} | "
-    #         f"confidence: {meta.confidence:.0%} | "
-    #         f"strength: {meta.strength:.0%} | scope: {meta.scope}"
-    #     )
-
-    # country_scores = score_countries(metas, country_metas)
-
-    # print("\nCountry scores:")
-    # for country, score in country_scores:
-    #     print(f"{country}: {score:.3f}")
-
-    # if country_scores:
-    #     best_country = country_scores[0]
-    #     print(f"\nBest guess: {best_country[0]}")
-    #     print(f"Score: {best_country[1]:.3f}")
-
-    # if len(country_scores) > 1:
-    #     second_country = country_scores[1]
-    #     score_difference = best_country[1] - second_country[1]
-    #     print(f"Score difference: {score_difference:.3f}")
-
 
 def load_image(image_path):
     image = Image.open(image_path)
@@ -70,10 +44,12 @@ def main():
 
         metas = create_meta_result()
         road_data = analyze_road(image)
-        metas["road"] = road_data
+        metas["road"]["features"] = road_data["features"]
+        metas["road"]["observations"] = road_data["observations"]
+        metas["road"]["clues"] = road_data["clues"]
         print("\nMETA DATA")
         print("--------------------")
-        print(metas)
+        print(json.dumps(metas, indent=2))
         if filename in labels:
 
 

@@ -15,6 +15,8 @@ META_CATEGORIES = [
 def create_meta_result(): 
     metas = {}
     for category in META_CATEGORIES:
-        metas[category] = {}
-        return metas
-    
+        metas[category] = {
+            "observations" : [],
+            "clues": []
+        }
+    return metas
