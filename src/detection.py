@@ -25,7 +25,7 @@ def detect_language():
 def detect_coverage():
     return []
 
-def meta_detection(image):
+def meta_detection(image=None):
     metas = []
     metas.extend(detect_architecture())
     metas.extend(detect_signage())
