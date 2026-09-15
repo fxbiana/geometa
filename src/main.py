@@ -1,41 +1,49 @@
-from metas import GeoMetas
 from PIL import Image
+import os
 from detection import meta_detection
-from scoring import meta_score
 from scoring import score_countries
-from country_metas import country_metas
-
+from features.road import analyze_road
 
 
 def main():
-    image = load_image("images\\commerce_california.png")
-    metas = meta_detection(image)
+    image_paths = []
 
-    analyze_image(image)
+# loops through and prints analysis for all images in the folder
+    for filename in os.listdir("images"):
+        if filename.endswith(".png"):
+            image_paths.append(os.path.join("images", filename))
 
-    print("\nGeoMetas observations:")
-    for meta in metas:
-        print(
-            f"{meta.category} | {meta.feature} | {meta.value} | "
-            f"confidence: {meta.confidence:.0%} | "
-            f"strength: {meta.strength:.0%} | scope: {meta.scope}"
-        )
+    for image_path in image_paths:
+        print(f"\n===== {image_path} =====")
 
-    country_scores = score_countries(metas, country_metas)
+        image = load_image(image_path)
+        analyze_image(image)
+        road_analysis = analyze_road(image)
+        print(road_analysis)
 
-    print("\nCountry scores:")
-    for country, score in country_scores:
-        print(f"{country}: {score:.3f}")
+    # print("\nGeoMetas observations:")
+    # for meta in metas:
+    #     print(
+    #         f"{meta.category} | {meta.feature} | {meta.value} | "
+    #         f"confidence: {meta.confidence:.0%} | "
+    #         f"strength: {meta.strength:.0%} | scope: {meta.scope}"
+    #     )
 
-    if country_scores:
-        best_country = country_scores[0]
-        print(f"\nBest guess: {best_country[0]}")
-        print(f"Score: {best_country[1]:.3f}")
+    # country_scores = score_countries(metas, country_metas)
 
-    if len(country_scores) > 1:
-        second_country = country_scores[1]
-        score_difference = best_country[1] - second_country[1]
-        print(f"Score difference: {score_difference:.3f}")
+    # print("\nCountry scores:")
+    # for country, score in country_scores:
+    #     print(f"{country}: {score:.3f}")
+
+    # if country_scores:
+    #     best_country = country_scores[0]
+    #     print(f"\nBest guess: {best_country[0]}")
+    #     print(f"Score: {best_country[1]:.3f}")
+
+    # if len(country_scores) > 1:
+    #     second_country = country_scores[1]
+    #     score_difference = best_country[1] - second_country[1]
+    #     print(f"Score difference: {score_difference:.3f}")
 
 
 def load_image(image_path):
