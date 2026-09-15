@@ -1,25 +1,10 @@
 from PIL import Image
 import os
-from detection import meta_detection
-from scoring import score_countries
+# from detection import meta_detection
+# from scoring import score_countries
 from features.road import analyze_road
-
-
-def main():
-    image_paths = []
-
-# loops through and prints analysis for all images in the folder
-    for filename in os.listdir("images"):
-        if filename.endswith(".png"):
-            image_paths.append(os.path.join("images", filename))
-
-    for image_path in image_paths:
-        print(f"\n===== {image_path} =====")
-
-        image = load_image(image_path)
-        analyze_image(image)
-        road_analysis = analyze_road(image)
-        print(road_analysis)
+from dataset import load_labels
+from metas import create_meta_result
 
     # print("\nGeoMetas observations:")
     # for meta in metas:
@@ -67,6 +52,33 @@ def analyze_image(image):
     print(f"Bottom: {bottom.size}")
 
     return top, middle, bottom
+
+def main():
+    image_paths = []
+    labels = load_labels("data/labels.csv")  # Load labels from the CSV file
+
+# loops through and prints analysis for all images in the folder
+    for filename in os.listdir("images"): # TODO: figure out this method
+        if filename.endswith(".png"):
+            image_paths.append(os.path.join("images", filename))
+
+    for image_path in image_paths:
+        print(f"\n===== {image_path} =====")
+
+        image = load_image(image_path)
+        filename = os.path.basename(image_path) # will go through each instead of just 1st one
+        meta = create_meta_result()
+        meta["road"] = analyze_road(image)
+        # analyze_image(image)
+        # road_analysis = analyze_road(image)
+        # print(road_analysis)
+        if filename in labels:
+            print("\nGROUND TRUTH")
+            print("--------------------")
+            print(f"Country: {labels[filename]['country']}") 
+            print(f"City: {labels[filename]['city']}")
+        else:
+            print("\nWARNING: No ground truth found.")
 
 if __name__ == "__main__":
     main()
