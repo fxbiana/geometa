@@ -67,12 +67,16 @@ def main():
 
         image = load_image(image_path)
         filename = os.path.basename(image_path) # will go through each instead of just 1st one
-        meta = create_meta_result()
-        meta["road"] = analyze_road(image)
-        # analyze_image(image)
-        # road_analysis = analyze_road(image)
-        # print(road_analysis)
+
+        metas = create_meta_result()
+        road_data = analyze_road(image)
+        metas["road"] = road_data
+        print("\nMETA DATA")
+        print("--------------------")
+        print(metas)
         if filename in labels:
+
+
             print("\nGROUND TRUTH")
             print("--------------------")
             print(f"Country: {labels[filename]['country']}") 
