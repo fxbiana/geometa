@@ -1,1 +1,544 @@
 
+# GeoMeta - Implementation Roadmap
+
+**Document:** `09_ROADMAP`
+**Project:** GeoMeta
+**Status:** Initial implementation roadmap
+**Version:** 0.1
+**Last updated:** October 16, 2026
+
+---
+
+## 1. Purpose and scope
+
+This roadmap translates the approved product and architecture specifications
+into an incremental implementation sequence.
+
+It prioritizes the smallest useful system that can:
+
+- Analyze one local image.
+- Preserve measurements and observations.
+- Convert approved geographic claims into evidence.
+- Rank country candidates with traceable contributions.
+- Abstain when evidence is insufficient.
+- Explain a result from stored analysis records.
+- Prove that prediction does not access ground truth.
+
+The roadmap does not require a complete implementation of the target model
+before the first useful milestone. Each later phase depends on evidence from
+earlier phases.
+
+The authoritative specifications are:
+
+- `01_PRODUCT_SPEC`
+- `03_SYSTEM_ARCHITECTURE`
+- `04_DATA_MODEL`
+- `05_REASONING_AND_SCORING`
+- `06_EVALUATION_AND_TESTING`
+- `08_DECISION_LOG`
+
+---
+
+## 2. Delivery principles
+
+1. **Build a vertical slice before broadening scope.** The first milestone
+   should execute the complete local-image reasoning chain.
+2. **Preserve contracts before optimizing detectors.** Measurements,
+   observations, evidence, contributions, and explanations need stable
+   boundaries before more clue categories are added.
+3. **Test integrity before adding product surfaces.** Ground-truth isolation,
+   reproducibility, source history, and immutable analysis attempts are
+   prerequisites for meaningful accuracy results.
+4. **Do not tune on the evaluation set.** Development and validation examples
+   must remain distinct, even while the dataset is small.
+5. **Prefer explicit abstention to unsupported certainty.**
+6. **Defer target features until their prerequisites are demonstrated.**
+7. **Do not claim broad geographic accuracy or learning effectiveness from the
+   prototype dataset.**
+
+---
+
+## 3. Current starting point
+
+The repository contains a small Python/Pillow prototype with:
+
+- A local image loader and label loader.
+- Early road pixel analysis.
+- Partial detector, metadata, knowledge, reasoning, and scoring modules.
+- A small labeled image set.
+- No working end-to-end prediction path.
+- No automated test suite.
+
+The existing prototype should be adapted behind the new contracts. It should
+not define the target data model by accident.
+
+Known technical issues that belong in the first stabilization phase include:
+
+- Missing or incompatible metadata types between prototype modules.
+- Inconsistent clue names.
+- Disconnected detection, scoring, and reasoning paths.
+- Pillow not declared in `requirements.txt`.
+- Hard-coded detector behavior unrelated to the input.
+
+These are implementation defects, not new product decisions.
+
+---
+
+## 4. Milestones
+
+### M0 - Repository and contract stabilization
+
+**Goal:** Make the repository runnable and establish the language-level
+contracts without changing product scope.
+
+**Work:**
+
+- Confirm the supported Python version and local execution command.
+- Declare the existing runtime dependency required by the prototype.
+- Decide the initial test framework as an implementation detail.
+- Add the initial package/module boundaries.
+- Define typed structures for:
+  - Source input and validation result.
+  - Measurement.
+  - Image region.
+  - Observation.
+  - Geographic evidence.
+  - Candidate score.
+  - Score contribution.
+  - Analysis result and terminal status.
+  - Explanation input/output.
+- Normalize clue identifiers and remove incompatible prototype-only shapes.
+- Keep the current CLI usable while replacing disconnected data flow.
+
+**Exit criteria:**
+
+- The prototype imports without known missing-symbol failures.
+- A minimal test command runs.
+- Contract objects can be constructed and validated.
+- No prediction component accepts ground-truth records.
+
+**Dependencies:** None.
+
+### M1-FE - Geographic feature evaluation and baseline
+
+**Goal:** Determine which visual concepts are detectable and geographically
+informative before promoting them into country scoring.
+
+**Work:**
+
+- Freeze the 1,500-image exploratory manifest as an external-data reference.
+- Create a deterministic provisional development/validation split.
+- Keep ground-truth labels outside prediction inputs.
+- Report random and class-prior country baselines.
+- Run a diagnostic baseline using existing road measurements only.
+- Report feature prevalence, missingness, coverage, and redundancy by label.
+- Separate detection confidence from geographic diagnosticity.
+- Manually review a small sample for road visibility, interface contamination,
+  and road-marking presence.
+- Evaluate whether interpretable road-marking detection is feasible.
+- Recommend the first feature concept to investigate or promote.
+
+**Exit criteria:**
+
+- Repeating the same manifest and split reproduces the same results.
+- Every metric includes its denominator and dataset version.
+- Ground-truth labels are joined only after prediction generation.
+- Random, class-prior, and current-feature diagnostics are reported.
+- Missing, unobservable, and failed detections remain distinguishable.
+- Raw color measurements are not presented as validated geographic clues.
+- No feature is promoted solely because it is frequent or label-correlated.
+- The report identifies the next feature investigation and its limitations.
+- No scoring or architecture behavior changes without explicit review.
+
+**Dependencies:** M0.
+
+### M1 - Local source and analysis lifecycle
+
+**Goal:** Create a reproducible analysis attempt from one local image.
+
+**Work:**
+
+- Validate supported image input.
+- Compute and preserve a content hash.
+- Create a source identity and availability state.
+- Record source provenance without using it as geographic evidence.
+- Associate one source with one round.
+- Create an analysis attempt with `processing` status.
+- Persist or return the immutable analysis manifest.
+- Complete the attempt as `completed`, `insufficient_evidence`, or an explicit
+  technical terminal failure.
+- Ensure retries create new analysis IDs.
+- Preserve source and manifest inputs after terminal completion.
+
+**Exit criteria:**
+
+- Identical image bytes produce identical source hashes.
+- A terminal analysis records source identity, input hash, and rule versions.
+- A retry does not overwrite the earlier attempt.
+- Processing cannot produce more than one terminal result.
+- Missing and changed files are distinguishable from valid input.
+
+**Dependencies:** M0 and M1-FE.
+
+### M2 - Road measurements and observations
+
+**Goal:** Adapt the existing Pillow road prototype to normalized contracts.
+
+**Work:**
+
+- Preserve the existing bottom-region measurement behavior initially.
+- Record measurements with:
+  - Stable feature names.
+  - Numeric values and units.
+  - Image-region identity.
+  - Detector and schema versions.
+  - Analysis/source provenance.
+- Convert measurements into structured observations.
+- Represent ambiguous and unavailable observations explicitly.
+- Ensure yellow-pixel detection is not presented as a confirmed road marking
+  without an observation rule that supports that interpretation.
+- Remove inconsistent clue naming between the detector and knowledge catalog.
+
+**Exit criteria:**
+
+- Synthetic images verify measurement values and boundary behavior.
+- Every observation can identify its supporting measurement.
+- Missing or out-of-frame data is not treated as contradiction.
+- Measurement and observation tests pass independently.
+
+**Dependencies:** M1.
+
+### M3 - Geographic evidence and country scoring
+
+**Goal:** Produce the first inspectable country ranking.
+
+**Work:**
+
+- Define a minimal approved geographic claim set for the supported road clues.
+- Preserve claim version and provenance.
+- Convert observations into normalized evidence.
+- Implement configurable candidate eligibility.
+- Implement heuristic country scores.
+- Persist or return per-evidence score contributions.
+- Return explicit `insufficient_evidence` when no candidate qualifies.
+- Keep scores ordered and heuristic, never probabilistic.
+- Preserve positive, negative, conflicting, and missing evidence states.
+
+**Exit criteria:**
+
+- A country candidate score can be traced to evidence, observations,
+  measurements, and source input.
+- Contributions sum to the stored candidate total under the selected
+  configuration.
+- Proposed or rejected claims cannot affect scoring.
+- No qualifying candidate produces `insufficient_evidence`.
+- Ground-truth changes do not affect an identical prediction.
+
+**Dependencies:** M2.
+
+### M4 - Traceable explanations
+
+**Goal:** Explain a stored analysis without recomputing or inventing evidence.
+
+**Work:**
+
+- Generate explanations from stored analysis records.
+- Show leading candidates and contribution reasons.
+- Distinguish supporting, weakening, contradictory, missing, and unavailable
+  evidence.
+- Identify the exact analysis ID and versions represented.
+- Explain abstention and insufficient evidence.
+- Keep hint levels as an internal contract or simple full explanation until the
+  product decision on staged disclosure is made.
+
+**Exit criteria:**
+
+- Every displayed clue maps to stored evidence.
+- Every displayed contribution maps to stored scoring data.
+- Historical explanations do not change when newer rules are added.
+- Failed and timed-out analyses cannot produce normal prediction explanations.
+
+**Dependencies:** M3.
+
+### M5 - First-slice evaluation and persistence hardening
+
+**Goal:** Demonstrate that the first vertical slice is trustworthy enough for
+broader feature work.
+
+**Work:**
+
+- Add integration tests for the complete local-image flow.
+- Add deterministic replay tests using the analysis manifest.
+- Add ground-truth isolation tests.
+- Add source-loss, hash-verified relinking, and explicit-deletion tests.
+- Select and implement the initial local persistence strategy.
+- Enforce same-round references and current-record rules where persistence is
+  introduced.
+- Separate development examples from validation examples.
+- Produce a baseline report with counts, coverage, abstentions, and failures.
+- Add regression fixtures for corrected prototype behavior.
+
+**Exit criteria:**
+
+- All first-slice acceptance criteria in `06_EVALUATION_AND_TESTING` pass.
+- A replay with the same manifest is deterministic.
+- Current-record integrity tests pass for the selected persistence store.
+- The baseline report does not claim unsupported accuracy or learning impact.
+- The local-image path is independently testable without live capture or UI.
+
+**Dependencies:** M4.
+
+---
+
+## 5. Target-model expansion
+
+These phases begin only after M5 passes.
+
+### M6 - Study records and evaluation
+
+**Goal:** Add the minimum durable study workflow around trusted predictions.
+
+**Work:**
+
+- Add session and round lifecycle persistence.
+- Add player guess revisions.
+- Add actual-location revisions and verification status.
+- Add authoritative current-record pointers.
+- Add immutable evaluations and superseding corrections.
+- Add country-level evaluation metrics.
+- Preserve prediction/evaluation separation.
+
+**Exit criteria:**
+
+- Guess, actual-location, and evaluation records are independently auditable.
+- Ground-truth correction creates a new evaluation.
+- Current summaries use authoritative pointers.
+- Prediction results remain unchanged after evaluation or correction.
+
+**Dependencies:** M5.
+
+### M7 - Checkpoints and guided explanations
+
+**Goal:** Support the product’s study-library explanation workflow.
+
+**Work:**
+
+- Add explanation-request checkpoints referencing exact analyses.
+- Preserve the display state and analysis identity shown to the player.
+- Implement approved hint levels and disclosure ordering.
+- Add manual explanation-quality review.
+
+**Exit criteria:**
+
+- A checkpoint remains stable after later analyses.
+- A checkpoint cannot reference processing or failed analysis.
+- Hint behavior matches the approved product decision.
+
+**Dependencies:** M6 and the open hint/disclosure decision.
+
+### M8 - Regional candidate scoring
+
+**Goal:** Add contextual regional reasoning after country scoring is validated.
+
+**Work:**
+
+- Select initial country-specific regional schemas.
+- Add canonical region and parent-region data.
+- Add regional candidate eligibility and ranking context.
+- Preserve independent regional score contributions.
+- Add independent regional evaluation.
+- Add regional metrics only for supported, eligible cases.
+
+**Exit criteria:**
+
+- Regions are ranked only within valid context.
+- Unsupported regions are not forced into the candidate set.
+- Regional totals are not treated as country decompositions.
+- Country and regional evaluation results remain independent.
+
+**Dependencies:** M5, regional-context decision, and region canonicalization.
+
+### M9 - Multi-source and multi-frame reasoning
+
+**Goal:** Expand from single-image analysis while preserving disagreement.
+
+**Work:**
+
+- Analyze sources independently.
+- Preserve source-specific measurements, observations, and evidence.
+- Define and version aggregation rules.
+- Represent repeated, unique, conflicting, and unavailable clues.
+- Add aggregation rules to the analysis manifest.
+
+**Exit criteria:**
+
+- Source disagreement is inspectable rather than averaged away.
+- Aggregation is reproducible from recorded rules.
+- Single-source behavior remains unchanged.
+
+**Dependencies:** M5 and an approved aggregation design.
+
+### M10 - Personalized insights
+
+**Goal:** Add learning summaries only after evaluation data is reliable.
+
+**Work:**
+
+- Define category-specific sample requirements.
+- Generate descriptive insights from evaluations.
+- Add stronger claims only with approved evidence thresholds.
+- Add persisted snapshots only when a concrete study workflow needs them.
+- Preserve support records, scope, rule version, and uncertainty.
+
+**Exit criteria:**
+
+- Insights are traceable to supporting rounds and evaluations.
+- Small samples produce descriptive or unavailable results.
+- No learning-effectiveness claim is made without an approved study protocol.
+
+**Dependencies:** M6, sufficient evaluation data, and the learning-study
+decision.
+
+### M11 - Live capture and user interface
+
+**Goal:** Add the real-time product surface after the reasoning core is stable.
+
+**Work:**
+
+- Select the capture mechanism and permissions model.
+- Add acquisition adapters.
+- Add freshness and stale-result presentation.
+- Add a desktop or other approved interface.
+- Preserve the same analysis and explanation contracts.
+
+**Exit criteria:**
+
+- Capture failures and unavailable sources are explicit.
+- Older results cannot appear current for newer input.
+- The interface does not alter prediction semantics.
+
+**Dependencies:** M5, interface decision, capture decision, and concurrency
+design.
+
+---
+
+## 6. Dependency graph
+
+```text
+M0 contracts and stabilization
+  -> M1-FE feature evaluation and baseline
+    -> M1 source and lifecycle
+      -> M2 measurements and observations
+        -> M3 evidence and country scoring
+          -> M4 explanations
+            -> M5 evaluation and persistence hardening
+              -> M6 study evaluation
+                -> M7 checkpoints and guided explanations
+              -> M8 regional scoring
+              -> M9 multi-source reasoning
+                -> M10 personalized insights
+              -> M11 live capture and interface
+```
+
+M8 and M9 are independent of each other after M5, although both depend on the
+trusted single-image baseline. M10 requires reliable evaluation records and
+should not be started merely because predictions exist.
+
+---
+
+## 7. Baseline evaluation plan
+
+The first evaluation report should be diagnostic rather than promotional.
+
+It should identify:
+
+- Dataset and split version.
+- Claim and scoring configuration versions.
+- Detector and schema versions.
+- Number of processed images.
+- Number of eligible country rankings.
+- Number of abstentions.
+- Technical failures.
+- Unavailable inputs.
+- Top-1 and selected top-k country results when the dataset supports reporting.
+- Actual-country rank.
+- Representative error categories.
+
+Every metric must include its denominator and excluded cases. The initial
+labeled set is suitable for pipeline and regression tests, not for broad
+geographic accuracy claims.
+
+---
+
+## 8. Scope guardrails
+
+The following are explicitly out of scope until their roadmap phase:
+
+- Live capture before M11.
+- Desktop UI before M11.
+- Regional scoring before M8.
+- Generalized multi-source aggregation before M9.
+- Persistent personalized insights before M10.
+- Advanced machine learning before the rule-based baseline is evaluated.
+- Probability claims before a separate calibration decision.
+- Learning-effectiveness claims before an approved study protocol.
+
+If implementation pressure conflicts with these guardrails, record the conflict
+in `08_DECISION_LOG` rather than silently expanding the first slice.
+
+---
+
+## 9. Roadmap maintenance
+
+1. Each milestone must preserve the acceptance criteria of earlier milestones.
+2. A milestone is complete only when its exit criteria and relevant tests pass.
+3. New work discovered during implementation should be classified as:
+   - bug in the current milestone,
+   - prerequisite for a later milestone,
+   - open product decision, or
+   - implementation detail.
+4. Product behavior changes require an update to the decision log and affected
+   specifications.
+5. The roadmap may be reordered for implementation efficiency, but dependency
+   constraints and scope guardrails remain authoritative.
+
+---
+
+## 10. Immediate next actions
+
+The next implementation sequence is:
+
+1. Freeze and evaluate the exploratory feature manifest.
+2. Confirm the supported Python command and test runner.
+3. Repair the prototype import and data-shape failures.
+4. Add the initial typed contracts and source-hash boundary.
+5. Add focused tests for source validation and road measurements.
+6. Connect validated observations through evidence and country scoring.
+7. Add traceable explanation output.
+8. Run the deterministic baseline and ground-truth isolation checks.
+
+No live capture, UI, regional scoring, multi-source aggregation, or
+personalized-insight work should begin before these actions pass.
+
+---
+
+## 11. Summary
+
+GeoMeta should be built as a sequence of verified vertical slices:
+
+```text
+contracts
+  -> source and lifecycle
+  -> measurements and observations
+  -> evidence and country scoring
+  -> explanations
+  -> evaluation and persistence hardening
+  -> study workflow
+  -> regional and multi-source reasoning
+  -> personalization and live product surfaces
+```
+
+The first meaningful milestone is not a user interface or a broad geographic
+model. It is a deterministic, test-backed local-image analysis that can show
+what it observed, how evidence affected country candidates, when it abstained,
+and how every explanation traces back to recorded inputs.

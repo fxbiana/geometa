@@ -1,0 +1,743 @@
+# GeoMeta — Product Specification
+
+**Document:** `01_PRODUCT_SPEC.md`  
+**Project:** GeoMeta  
+**Status:** Initial product definition  
+**Version:** 0.1  
+**Last updated:** October 16, 2026
+
+---
+
+## 1. Product Overview
+
+### 1.1 What is GeoMeta?
+
+GeoMeta is a real-time geographic reasoning coach designed to help GeoGuessr players improve their ability to identify locations from visual evidence.
+
+GeoMeta continuously analyzes the player's current game view and maintains a ranked prediction of the countries most likely to contain the location. When the player requests an explanation, GeoMeta presents its current prediction, explains the evidence behind the ranking, and saves a checkpoint to the player's study library.
+
+After a round, the player manually records their own guess and the actual location. GeoMeta uses this information to evaluate its predictions, evaluate the player's performance, and help the player identify recurring strengths and weaknesses over time.
+
+GeoMeta is intended to teach players **how to reason about geographic clues**, rather than simply tell them where they are.
+
+### 1.2 Product Vision
+
+Build a tool that makes geographic reasoning transparent, interactive, and progressively more understandable through practice.
+
+A player should be able to investigate why a country is considered likely, determine which clues influenced the prediction, recognize when evidence is weak or contradictory, and learn from mistakes. Over time, the study library should help players understand which geographic distinctions they recognize reliably and which they need to practice.
+
+GeoMeta should prioritize explanations that can be traced back to actual evidence. It should acknowledge uncertainty when the available image does not support a reliable conclusion.
+
+### 1.3 Core Product Principle
+
+**Every prediction should be an opportunity to learn.**
+
+A country ranking alone is insufficient. GeoMeta must make the reasoning behind that ranking inspectable and connect individual rounds to a longer-term learning experience.
+
+---
+
+## 2. Problem Statement
+
+GeoGuessr requires players to infer locations from visual characteristics such as road markings, infrastructure, vegetation, architecture, signage, terrain, and language.
+
+Players may recognize individual clues without understanding how much those clues should influence a guess. They may also confuse countries that share similar characteristics, overvalue unreliable observations, or struggle to identify why a guess was incorrect.
+
+A conventional answer or location reveal shows the player where they were, but does not necessarily explain the reasoning that would have led to a better guess.
+
+GeoMeta addresses this problem by connecting three experiences:
+
+1. **Geographic inference:** Analyze visual evidence and rank plausible countries and regions.
+2. **Reasoning investigation:** Explain the evidence, uncertainty, and contradictions behind a prediction.
+3. **Personalized review:** Preserve predictions and compare them against the player's guesses and actual locations to support continued learning.
+
+The product must make these experiences work together rather than treating prediction, explanation, and study history as unrelated features.
+
+---
+
+## 3. Target Users
+
+### 3.1 Primary User
+
+GeoGuessr players who want to improve their geographic reasoning and become more consistent at identifying countries and regions.
+
+These players may already recognize common visual clues but want help understanding their significance, reliability, and geographic distribution.
+
+### 3.2 Secondary User
+
+Players who want to review previous rounds, identify patterns in their mistakes, and develop a structured study routine.
+
+This includes players who want to distinguish between different types of errors, such as identifying the correct country but the wrong region, or repeatedly confusing countries with similar infrastructure.
+
+### 3.3 User Needs
+
+GeoMeta should help users answer the following questions:
+
+- Which countries are most plausible given the current view?
+- Why is one country ranked above another?
+- Which visual observations support the prediction?
+- Which clues contradict the leading candidate?
+- How reliable is the available evidence?
+- What information is missing or ambiguous?
+- How did GeoMeta's prediction change during a round?
+- Was my own guess correct at the country and regional levels?
+- Which geographic distinctions should I practice next?
+
+---
+
+## 4. Product Goals
+
+### G1. Provide continuous geographic analysis
+
+GeoMeta should continuously analyze the current game view and maintain an up-to-date prediction as the player explores.
+
+The product should support ongoing analysis without requiring the player to request a full explanation every time the view changes.
+
+### G2. Make predictions explainable
+
+When the player requests an explanation, GeoMeta should show the current country ranking and the evidence contributing to it.
+
+The explanation should distinguish direct image observations from geographic interpretations and final scoring decisions.
+
+### G3. Represent uncertainty honestly
+
+GeoMeta should communicate when clues are ambiguous, unreliable, contradictory, or insufficient to support a confident prediction.
+
+A country ranking must not automatically be presented as a calibrated probability.
+
+### G4. Preserve useful learning moments
+
+Each player-requested explanation should create a saved checkpoint containing the prediction and the evidence associated with that moment.
+
+Players should be able to revisit multiple checkpoints from the same round and investigate how GeoMeta's reasoning changed.
+
+### G5. Evaluate player performance
+
+GeoMeta should compare the player's manually entered guess with the manually entered actual location.
+
+Evaluation should begin at the country and regional levels, using defined, country-specific regional categories.
+
+### G6. Support learning over time
+
+The study library should help players recognize recurring patterns in their performance as enough evidence accumulates.
+
+Insights must be grounded in recorded rounds rather than assumptions based on isolated mistakes.
+
+### G7. Support incremental development
+
+The product should build on the existing Python and Pillow prototype where appropriate.
+
+The architecture should separate image acquisition, image analysis, geographic reasoning, explanation, and study-record management so that future capabilities can be introduced without unnecessarily rewriting the entire system.
+
+---
+
+## 5. Non-Goals
+
+The following are not requirements for the initial usable product.
+
+### 5.1 Cheating or automated gameplay
+
+GeoMeta is a learning tool, not an automated player. It should not submit guesses, move through the game, or make gameplay decisions on the user's behalf.
+
+Live assistance must be evaluated against applicable game rules and platform policies before being released for use during scored or competitive play.
+
+### 5.2 Memorization as the primary learning method
+
+GeoMeta should not rely exclusively on memorizing locations, screenshots, or predetermined answers. Its primary purpose is to teach reasoning from visual evidence.
+
+### 5.3 Guaranteed identification
+
+GeoMeta is not expected to identify every country or region correctly. It must be able to communicate uncertainty and acknowledge insufficient evidence.
+
+### 5.4 Advanced machine learning as a prerequisite
+
+The first usable version does not require a trained computer vision model or a sophisticated probabilistic model. Deterministic image processing and an inspectable scoring system can provide an initial foundation.
+
+More advanced techniques may be evaluated when they address a demonstrated limitation.
+
+### 5.5 Full automatic result extraction
+
+The player will manually enter their guess and the actual location initially. Automatic extraction of submitted guesses or game results is outside the initial scope.
+
+### 5.6 Immediate implementation of every interface
+
+A complete desktop interface, sophisticated live overlay, and advanced library dashboard do not need to exist before the analysis and data contracts are validated.
+
+The product vision is broader than the first implementation milestone.
+
+---
+
+## 6. Core User Experience
+
+### 6.1 Start a Study Session
+
+The player opens GeoMeta and starts or selects a study session.
+
+GeoMeta obtains the current game view through a supported capture mechanism. The precise capture method remains an engineering decision that must be investigated.
+
+The system begins analyzing the available image and maintains its current prediction.
+
+### 6.2 Continuous Analysis
+
+As the view changes, GeoMeta should update its analysis when appropriate.
+
+The analysis pipeline is conceptually:
+
+**Image input → image features → observations → geographic clues → candidate scoring → ranked prediction**
+
+Each stage has a distinct responsibility:
+
+- **Image features:** Quantitative measurements extracted from pixels, such as brightness or color distribution.
+- **Observations:** Interpretable descriptions of visible characteristics.
+- **Geographic clues:** Interpretations of observations that may be associated with particular countries or regions.
+- **Candidate scoring:** An evaluation of how the available evidence supports or contradicts each candidate.
+- **Ranked prediction:** An ordered list of candidate countries, including relevant uncertainty and evidence.
+
+A measured percentage of yellow pixels, for example, is an image feature. It does not automatically prove that a yellow road marking is present, much less identify a particular country.
+
+The system must preserve these distinctions to prevent weak image measurements from becoming unjustifiably strong geographic conclusions.
+
+### 6.3 Request an Explanation
+
+The player presses an explanation button to inspect the current prediction.
+
+GeoMeta should display:
+
+- The leading candidate countries and their ranking scores.
+- The evidence supporting each leading candidate.
+- Relevant contradictory or missing evidence.
+- The relative importance and reliability of individual clues.
+- An indication of uncertainty and whether the evidence is sufficient.
+- A guided-hint experience, with the option to reveal a fuller explanation.
+
+The explanation must correspond to the prediction actually produced by the reasoning engine. It must not invent supporting clues after the ranking has been calculated.
+
+### 6.4 Save a Checkpoint
+
+Every player-requested explanation creates a checkpoint.
+
+A checkpoint represents a fixed record of GeoMeta's prediction at a specific moment. Subsequent changes to the live view must not silently modify that record.
+
+A checkpoint should preserve, where available:
+
+- A reference to the associated image or captured view.
+- The time of the checkpoint and its round association.
+- The ranked candidate countries and their scores.
+- The observations and geographic clues used.
+- The evidence supporting and contradicting leading candidates.
+- Relevant uncertainty indicators.
+- The version of the reasoning system that generated the result.
+
+The library should support multiple checkpoints within a single round.
+
+Automatic storage of every analyzed frame is not part of the initial checkpoint requirement.
+
+### 6.5 Record the Player's Guess
+
+After making a guess, the player manually enters their selected country and, when possible, their regional guess.
+
+The player's guess must remain separate from GeoMeta's prediction.
+
+The system should preserve the player's original answer even if GeoMeta's ranking changes later.
+
+### 6.6 Record the Actual Location
+
+After the player reveals the result, they manually enter the actual country and available regional information.
+
+GeoMeta should not assume that the top-ranked prediction is the correct answer. The actual location must be recorded separately.
+
+The system should allow an unknown or unavailable regional answer rather than forcing the player to invent a region.
+
+### 6.7 Review the Round
+
+GeoMeta compares the recorded outcomes with the saved predictions.
+
+The review should distinguish:
+
+- GeoMeta's prediction performance.
+- The player's guessing performance.
+- Country-level correctness.
+- Regional correctness, when the required data exists.
+- Clues that supported the correct answer.
+- Clues that were misleading, weak, or incorrectly interpreted.
+- Changes between saved checkpoints.
+
+A correct country prediction with an incorrect regional prediction should be treated differently from an entirely incorrect country prediction.
+
+### 6.8 Revisit the Study Library
+
+The player can browse saved rounds and checkpoints.
+
+The library should make it possible to return to previous predictions, inspect the original reasoning, and review the outcome and lessons associated with a completed round.
+
+Over time, it should support summaries of recurring performance patterns. These summaries must be based on sufficient recorded evidence and clearly distinguish measured results from tentative observations.
+
+---
+
+## 7. Functional Requirements
+
+The following requirements define the expected product behavior. They are not claims that the current prototype already satisfies them.
+
+### FR-01: Image Acquisition
+
+GeoMeta must accept image inputs from a supported source.
+
+The initial reasoning pipeline must remain usable with existing local image files, independent of live capture.
+
+### FR-02: Continuous Analysis
+
+GeoMeta must be designed to analyze changing game views and refresh its current prediction without requiring a manual explanation request for every update.
+
+The capture mechanism, refresh frequency, and acceptable processing latency must be established through technical investigation and testing.
+
+### FR-03: Structured Image Analysis
+
+Image analysis must return structured measurements and observations rather than relying exclusively on unstructured text.
+
+Measurements must not be treated as confirmed geographic clues without an appropriate interpretation step.
+
+### FR-04: Geographic Knowledge
+
+Geographic clues must have explicit definitions and documented associations with relevant countries or regions.
+
+Knowledge records should distinguish factors such as reliability, diagnostic value, geographic scope, and evidence provenance where those properties are available.
+
+Unsupported associations must not be presented as established facts.
+
+### FR-05: Candidate Ranking
+
+GeoMeta must rank candidate countries using a consistent scoring method.
+
+The scoring method must account for supporting evidence and, where justified, contradictory evidence. Missing or unknown evidence must not automatically be treated as evidence against a candidate.
+
+### FR-06: Evidence Attribution
+
+GeoMeta must be able to identify which observations and clues contributed to a candidate's score.
+
+The displayed explanation must be traceable to the actual scoring result.
+
+### FR-07: Uncertainty Communication
+
+GeoMeta must communicate when evidence is weak, conflicting, or insufficient.
+
+A ranked list must not be described as a probability distribution unless the values have been appropriately calibrated and evaluated.
+
+### FR-08: On-Demand Explanation
+
+The player must be able to request an explanation of the current prediction.
+
+The explanation must reflect the latest completed analysis and identify which prediction it describes.
+
+### FR-09: Guided Disclosure
+
+GeoMeta should provide guided hints before revealing a fuller explanation, allowing players to investigate the evidence themselves.
+
+The player must be able to request more detail.
+
+### FR-10: Checkpoint Creation
+
+Each explanation request must create a saved checkpoint containing the corresponding prediction and evidence.
+
+Checkpoint records must remain stable when the live analysis changes.
+
+### FR-11: Study Library
+
+The player must be able to access previously saved rounds and checkpoints.
+
+The library must preserve the relationship between each round, its checkpoints, the player's guess, and the actual location.
+
+### FR-12: Manual Guess Entry
+
+The player must be able to enter their guessed country and an optional regional guess.
+
+The system must preserve this information independently of GeoMeta's own prediction.
+
+### FR-13: Manual Actual-Location Entry
+
+The player must be able to record the actual country and available regional information after revealing the answer.
+
+Unknown regional information must be handled explicitly.
+
+### FR-14: Country-Level Evaluation
+
+GeoMeta must compare the player's country guess with the actual country.
+
+The system should separately evaluate whether the correct country appeared in GeoMeta's candidate ranking and where it ranked.
+
+### FR-15: Regional Evaluation
+
+GeoMeta must support regional comparisons using defined, country-specific regional categories.
+
+Regional evaluation must follow consistent matching rules. The exact regional hierarchy and matching implementation will be specified in the data-model documentation.
+
+### FR-16: Round Review
+
+GeoMeta must provide a review of the player's guess, the actual location, and the relevant saved prediction.
+
+The review must distinguish player performance from system performance.
+
+### FR-17: Historical Reasoning
+
+GeoMeta must preserve the reasoning output associated with a saved checkpoint, including the version of the system that generated it.
+
+Historical predictions must not silently change when the scoring method or geographic knowledge is updated.
+
+### FR-18: Learning Insights
+
+GeoMeta should identify recurring strengths and weaknesses from accumulated study records.
+
+Insights must be supported by recorded evidence and should communicate when the available sample is too small for a reliable conclusion.
+
+### FR-19: Failure Handling
+
+GeoMeta must handle missing images, failed analysis, unavailable actual-location data, and incomplete study records without presenting fabricated predictions or silently treating missing information as a negative clue.
+
+### FR-20: Data Management
+
+GeoMeta must define how study records and associated images are saved, retrieved, and associated with the correct user session or round.
+
+Storage format, persistence technology, and deletion behavior remain implementation decisions.
+
+---
+
+## 8. Data and Reasoning Principles
+
+### 8.1 Separation of Evidence and Interpretation
+
+GeoMeta must distinguish between what it measures, what it observes, and what it infers.
+
+For example:
+
+| Stage | Example |
+|---|---|
+| Measurement | A measured proportion of yellow pixels |
+| Observation | A possible yellow marking appears in the lower image region |
+| Geographic interpretation | The marking may be consistent with road-marking conventions in certain countries |
+| Candidate evaluation | The clue contributes a documented amount to the ranking |
+| Explanation | The player sees how this clue affected the prediction and how reliable the inference is |
+
+This structure is essential because visual measurements can be affected by lighting, shadows, vehicles, vegetation, image compression, and the camera's viewpoint.
+
+### 8.2 Geographic Scope
+
+Clues may apply at different geographic levels.
+
+GeoMeta should distinguish among clues that are relevant to a country, a broad region, or a hemisphere. It should not treat a regional clue as proof of an entire country.
+
+### 8.3 Reliability and Diagnostic Value
+
+The system should distinguish a clue's reliability from how useful it is for differentiating candidates.
+
+A reliably observed feature can be geographically common and therefore not very useful for narrowing down a guess. Conversely, a potentially distinctive clue may be unreliable if it was extracted from an ambiguous image.
+
+The scoring model must account for these differences without pretending the underlying values are more precise than the evidence supports.
+
+### 8.4 Contradictions and Missing Evidence
+
+Contradictory clues should remain visible in the explanation.
+
+Missing evidence must not automatically be interpreted as a contradiction. If a road marking is outside the visible frame, for example, the system should not assume that the marking is absent.
+
+### 8.5 Geographic Knowledge Provenance
+
+Where possible, geographic associations should have documented sources or an explicit record of their origin.
+
+The system should distinguish verified knowledge from hypotheses that require testing.
+
+### 8.6 Separation of Ranking and Explanation
+
+The ranking engine determines candidate scores from the available evidence. The explanation layer communicates how those scores were produced.
+
+The explanation layer must not introduce unsupported evidence to justify a ranking after the fact.
+
+---
+
+## 9. Study Library and Personalized Learning
+
+### 9.1 Study Record
+
+A completed study record should connect:
+
+- The round and associated image or images.
+- One or more saved checkpoints.
+- The prediction and evidence associated with each checkpoint.
+- The player's guess.
+- The actual location.
+- Country and regional evaluation results.
+- Relevant review notes or learning insights.
+- The version of GeoMeta used for each prediction.
+
+A round may have multiple checkpoints but should retain a coherent association with its final result.
+
+### 9.2 Player Performance
+
+Player performance should be evaluated independently from system performance.
+
+For example, if GeoMeta ranks the correct country first but the player guesses another country, the round indicates a player error even though the system's top prediction was correct.
+
+If the player's country is correct but their regional guess is incorrect, the review should preserve that distinction.
+
+### 9.3 System Performance
+
+GeoMeta should be evaluated on whether the actual country appears in its ranking, its position in that ranking, the quality of its evidence attribution, and how often it produces unsupported or misleading conclusions.
+
+A system should not be considered successful merely because it always returns a country.
+
+### 9.4 Long-Term Learning Insights
+
+Potential future insights include:
+
+- Countries the player consistently identifies correctly.
+- Countries the player frequently confuses.
+- Regions where the player is less accurate than at the country level.
+- Clue categories that frequently contribute to correct or incorrect guesses.
+- Patterns in how GeoMeta's own predictions fail.
+
+These insights should be introduced gradually, after the underlying records and evaluation metrics are reliable.
+
+GeoMeta should avoid labeling a player as weak in a category based on a single example.
+
+---
+
+## 10. Nonfunctional Requirements
+
+### NFR-01: Modularity
+
+Image acquisition, image processing, geographic knowledge, scoring, explanations, and study-library management should have defined responsibilities and interfaces.
+
+### NFR-02: Traceability
+
+A displayed prediction should be traceable to its observations, geographic clues, scoring contributions, and relevant knowledge records.
+
+### NFR-03: Reproducibility
+
+Saved checkpoints should preserve enough information to understand how a prediction was produced, even after the system changes.
+
+### NFR-04: Performance
+
+Continuous analysis must be responsive enough to be useful during gameplay.
+
+Acceptable capture frequency, processing latency, and resource consumption must be measured before numeric performance targets are established.
+
+### NFR-05: Reliability
+
+Failures in capture or analysis should not silently produce stale predictions that appear current.
+
+The interface should indicate when an analysis is unavailable or outdated.
+
+### NFR-06: Data Integrity
+
+Study records must preserve the association between predictions, guesses, actual locations, and checkpoints.
+
+Incomplete records must be identifiable.
+
+### NFR-07: Privacy
+
+The product should minimize unnecessary collection and retention of images or gameplay data.
+
+Storage, deletion, and any image-capture behavior should be transparent to the user.
+
+### NFR-08: Maintainability
+
+The codebase should remain understandable and testable by a student developer. Changes should be incremental, with clear module responsibilities and tests for important reasoning behavior.
+
+### NFR-09: Honest Communication
+
+GeoMeta must not claim measured accuracy, calibrated probabilities, or reliable personalized insights unless those claims are supported by evaluation.
+
+---
+
+## 11. Success Metrics
+
+GeoMeta's success should be evaluated across system performance, learning usefulness, and technical reliability.
+
+### 11.1 Prediction Metrics
+
+- **Top-1 country accuracy:** Percentage of evaluated images where the highest-ranked country matches the actual country.
+- **Top-k country accuracy:** Percentage of evaluated images where the actual country appears within the top *k* candidates.
+- **Regional accuracy:** Percentage of eligible cases where the predicted region matches the actual region under the defined regional rules.
+- **Insufficient-evidence behavior:** Whether the system appropriately acknowledges cases where the available evidence does not support a reliable conclusion.
+
+These metrics should be measured on held-out images, not only the images used to develop the scoring rules.
+
+### 11.2 Explanation Metrics
+
+- Percentage of displayed scoring contributions that can be traced to actual evidence.
+- Frequency of unsupported or incorrectly attributed explanations.
+- Whether contradictory and missing evidence is represented accurately.
+- Whether the explanation corresponds to the saved prediction it describes.
+
+### 11.3 Learning Metrics
+
+- Whether players can revisit previous checkpoints and understand why the ranking changed.
+- Whether country-level and regional-level mistakes can be distinguished.
+- Whether recurring performance patterns are supported by sufficient records.
+- Whether players report that the explanations help them understand clues rather than simply follow the recommended country.
+
+Learning effectiveness will require separate evaluation. High prediction accuracy alone does not prove that players are learning.
+
+### 11.4 Technical Metrics
+
+- Image-analysis processing time.
+- Delay between a view change and an updated prediction.
+- Capture and analysis failure rates.
+- Successful checkpoint persistence and retrieval.
+- Consistency of scoring and historical records.
+
+Numerical targets will be set after establishing a working baseline.
+
+---
+
+## 12. Scope and Development Boundaries
+
+The product vision includes continuous live analysis and a persistent study library. Development should proceed through validated capabilities rather than implementing the entire vision in a single step.
+
+### Initial Foundation
+
+- Preserve and inspect the existing Python/Pillow prototype.
+- Establish consistent representations for image features, observations, geographic clues, and candidate scores.
+- Connect the analysis and scoring stages into a testable pipeline.
+- Validate the ranking and evidence attribution using the existing labeled-image dataset.
+- Establish a clear distinction between prediction inputs and ground-truth labels.
+
+### First Usable Learning Experience
+
+- Provide a usable way to submit or select images for analysis.
+- Display candidate rankings and traceable evidence.
+- Support player-requested explanations and saved checkpoints.
+- Save study records and allow them to be revisited.
+- Support manual entry of player guesses and actual locations.
+- Provide initial country- and region-level review where the necessary data exists.
+
+### Real-Time Desktop Experience
+
+- Investigate and validate a supported way to obtain the live game view.
+- Integrate continuous image acquisition with the established analysis pipeline.
+- Refresh predictions while preventing stale or incomplete results from being presented as current.
+- Provide a player-controlled explanation and checkpoint workflow.
+- Evaluate processing performance and compatibility with the intended game environment.
+
+### Longer-Term Learning Capabilities
+
+- Develop reliable player-performance summaries.
+- Expand geographic knowledge and regional definitions.
+- Improve image interpretation and scoring based on evaluation results.
+- Explore more advanced computer vision or machine learning where testing shows that it is beneficial.
+
+This sequence describes development priorities, not a commitment to a particular interface framework, capture technology, or machine-learning architecture.
+
+---
+
+## 13. Risks and Mitigations
+
+### R1. Live Capture Is More Difficult Than Expected
+
+**Risk:** A desktop companion may not be able to obtain the game view reliably using the initially preferred capture method.
+
+**Mitigation:** Keep image acquisition separate from the analysis engine. Validate capture feasibility before committing to the final desktop implementation.
+
+### R2. Weak Image Measurements Produce Misleading Clues
+
+**Risk:** Basic image processing may mistake shadows, vehicles, or other objects for road characteristics.
+
+**Mitigation:** Preserve the distinction between raw measurements, observations, and geographic interpretations. Test each stage against labeled examples.
+
+### R3. Rankings Appear More Certain Than They Are
+
+**Risk:** Users may interpret scoring values as probabilities or trust a top-ranked country despite weak evidence.
+
+**Mitigation:** Communicate uncertainty, show contradictory evidence, and avoid presenting scores as calibrated probabilities without evaluation.
+
+### R4. A Small Dataset Produces Overfitted Rules
+
+**Risk:** Rules tuned to a small collection of images may not generalize to other countries or environments.
+
+**Mitigation:** Use the current dataset as a prototype, expand the evaluation set, and test on images not used to develop the rules.
+
+### R5. Historical Predictions Change Unexpectedly
+
+**Risk:** Updating geographic knowledge or scoring rules could make previous study records appear different.
+
+**Mitigation:** Save prediction snapshots and record the relevant reasoning-system version.
+
+### R6. Personalized Insights Are Premature
+
+**Risk:** The system may incorrectly identify a persistent player weakness based on too few examples.
+
+**Mitigation:** Require sufficient evidence, distinguish observations from conclusions, and communicate limitations.
+
+### R7. Live Assistance Conflicts With Game Rules
+
+**Risk:** Certain capture or assistance methods may conflict with platform rules or competitive expectations.
+
+**Mitigation:** Review applicable rules and design the product to support legitimate practice and learning. Do not implement automated gameplay actions.
+
+---
+
+## 14. Assumptions and Constraints
+
+The current product definition relies on the following assumptions:
+
+1. The initial development environment remains Python with Pillow for image processing.
+2. The existing local image dataset can support early pipeline development but is not sufficient to establish broad geographic accuracy.
+3. The player manually records their own guess and the actual location.
+4. GeoMeta stores multiple checkpoints when the player requests explanations.
+5. Country-level evaluation is required, with regional evaluation supported through defined country-specific categories.
+6. The desktop companion is the intended long-term platform, but its capture mechanism has not yet been selected.
+7. The product should remain useful even when the available evidence is insufficient for a reliable prediction.
+8. The initial reasoning engine can be deterministic and rule-based, with more advanced techniques considered only when justified.
+9. The study library is a core product capability, not an optional future add-on.
+10. Technical decisions must be validated against the current codebase before implementation.
+
+---
+
+## 15. Open Product and Engineering Decisions
+
+The following decisions remain unresolved and should be documented as they are investigated.
+
+| Decision | Why it matters |
+|---|---|
+| Desktop capture mechanism | Determines how the live game view reaches the analysis engine |
+| Continuous-analysis refresh policy | Balances responsiveness, computational cost, and prediction stability |
+| Desktop interface technology | Determines the UI implementation and integration approach |
+| Study-library storage | Determines how images, checkpoints, and results persist |
+| Geographic knowledge sources | Determines the provenance and reliability of clue associations |
+| Regional hierarchy | Determines how regional guesses are represented and evaluated |
+| Scoring calibration | Determines whether scores can eventually be interpreted as probabilities |
+| Minimum evidence thresholds | Determines when GeoMeta should report insufficient evidence |
+| Privacy and retention behavior | Determines how captured images and study records are managed |
+| Live-use compatibility | Determines which gameplay environments and use cases can be supported |
+
+These decisions should be resolved through focused investigation and recorded in the relevant technical documentation. They do not prevent us from defining the product's purpose and intended behavior now.
+
+---
+
+## 16. Product Acceptance Criteria
+
+The product will be considered to have reached its first meaningful learning milestone when it can:
+
+1. Analyze an image through a consistent, testable pipeline.
+2. Produce a ranked country prediction using documented reasoning rules.
+3. Show which evidence contributed to the ranking and identify relevant contradictions.
+4. Communicate uncertainty without inventing confidence or unsupported explanations.
+5. Save a fixed checkpoint associated with the prediction it represents.
+6. Preserve multiple checkpoints for the same round.
+7. Allow the player to enter their own guess and the actual location manually.
+8. Compare player and system performance independently at the country level.
+9. Support regional comparison when the necessary regional data and matching rules are available.
+10. Retrieve saved rounds and checkpoints for review.
+11. Preserve historical prediction records when the reasoning system changes.
+12. Pass tests that verify important scoring, data-integrity, and evaluation behavior.
+
+Continuous live capture, responsive desktop integration, and long-term learning summaries are additional milestones that must be validated rather than assumed to work merely because the underlying product is specified.
+
+---
+
+## 17. Definition of Success
+
+GeoMeta succeeds when it helps a player understand *why* a location is plausible and use that understanding to make better-informed guesses over time.
+
+A successful product will not simply return a country name. It will provide an inspectable chain from image evidence to geographic reasoning, preserve the decisions made during a round, and use the player's recorded outcomes to support meaningful review.
+
+The product's long-term value comes from combining continuous analysis with user-controlled explanations and a persistent study library.
+
+**The goal is not just to guess the location. The goal is to teach the player how to reason their way toward it.**

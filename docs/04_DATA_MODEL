@@ -1,0 +1,1762 @@
+# GeoMeta — Data Model Specification
+
+**Document:** `04_DATA_MODEL`
+**Project:** GeoMeta
+**Status:** Initial data-model definition
+**Version:** 0.1
+**Last updated:** October 16, 2026
+
+---
+
+## 1. Purpose and scope
+
+This document defines the conceptual and logical data model for GeoMeta.
+
+It translates the product requirements in `01_PRODUCT_SPEC` into:
+
+- Durable domain entities.
+- Relationships and cardinalities.
+- Lifecycle states.
+- Historical-versioning rules.
+- Data-integrity invariants.
+- A proposed relational schema.
+- Initial implementation boundaries.
+
+This document does not select a database engine, UI framework, capture technology,
+or authentication system. Database-specific types and migration details remain
+implementation decisions.
+
+The model is designed to support:
+
+- One local profile initially, with a future path to multiple users.
+- Study sessions containing multiple rounds.
+- Rounds containing multiple imported images or captured frames.
+- Repeated and failed analysis attempts.
+- Traceable evidence and candidate scoring.
+- Player guesses and actual-location corrections as separate histories.
+- Immutable evaluations and historical reasoning.
+- Study checkpoints created by explanation requests.
+- Evidence-based learning insights.
+
+The current Python/Pillow prototype does not implement this model. This document
+defines the target data contract for incremental implementation.
+
+---
+
+## 2. Modeling principles
+
+### 2.1 Preserve history
+
+Durable records use generated, opaque, stable identifiers. Corrections and
+revisions create new records where historical interpretation could otherwise
+change.
+
+Historical analyses, checkpoints, evaluations, geographic claims, and scoring
+configurations must remain understandable after newer versions are introduced.
+
+### 2.2 Separate product concepts
+
+The model must keep these concepts separate:
+
+1. What was captured or imported.
+2. What an image-analysis detector measured.
+3. What the system observed or interpreted.
+4. What geographic claims associate an observation with a location.
+5. How evidence affected candidate scores.
+6. What GeoMeta predicted.
+7. What the player guessed.
+8. What the actual location was.
+9. What was learned from completed study records.
+
+### 2.3 Do not treat absence as contradiction
+
+Unavailable, unobserved, or out-of-frame evidence must not automatically become
+negative evidence. A contradiction requires an actual observation that conflicts
+with a candidate or claim.
+
+### 2.4 Preserve uncertainty
+
+Scores are ordered heuristic values unless separately calibrated and evaluated.
+They must not be presented as probabilities by implication or field naming.
+
+An analysis may successfully conclude that evidence is insufficient. This is
+different from a technical failure.
+
+### 2.5 Keep ground truth out of prediction
+
+Actual-location records are evaluation data. They must not be available as
+inputs to image analysis, geographic reasoning, candidate ranking, or explanation
+generation for the same prediction.
+
+### 2.6 Keep derived data attributable
+
+Every displayed prediction should be traceable through:
+
+```text
+analysis
+  -> source inputs
+  -> measurements
+  -> observations
+  -> evidence
+  -> geographic claim versions
+  -> score contributions
+  -> candidate scores
+```
+
+---
+
+## 3. Conceptual entities
+
+## 3.1 Profile
+
+A `Profile` identifies the owner of study sessions and learning history.
+
+The initial implementation is single-user and local. It does not require
+authentication, registration, cloud synchronization, or multi-user access.
+
+Including the entity now keeps ownership explicit and leaves a migration path for
+future multi-user support.
+
+## 3.2 StudySession
+
+A `StudySession` groups related rounds into a study activity.
+
+A session is an organizational container. It is not a round, prediction, or
+checkpoint.
+
+A session may contain incomplete or abandoned rounds and should be recoverable
+after an interruption.
+
+## 3.3 Round
+
+A `Round` represents one location-identification task.
+
+A round:
+
+- Belongs to exactly one study session.
+- Represents one location.
+- May contain zero or more source images or frames.
+- May contain multiple analysis attempts.
+- May contain multiple explanation checkpoints.
+- May be incomplete, abandoned, or completed without a player guess.
+- Must not combine unrelated locations.
+
+Adding a source or rerunning analysis must not create a new round.
+
+## 3.4 Source
+
+A `Source` represents an imported image or captured frame used by GeoMeta.
+
+One conceptual entity is used for both source types. A `source_type` attribute
+distinguishes them.
+
+Initial source types:
+
+- `imported_image`
+- `captured_frame`
+
+Shared source data may include:
+
+- Stable source ID.
+- Source type.
+- Original local path or reference.
+- Content hash.
+- Availability status.
+- Unavailability reason.
+- Image dimensions.
+- Image format.
+- Import or capture metadata.
+
+Capture-specific data may include:
+
+- Capture timestamp.
+- Capture stream identifier.
+- Frame sequence number.
+- Capture-source description.
+
+Capture-specific fields may be nullable for imported images. If their number or
+behavior grows substantially, a related capture metadata entity may be added
+without splitting the shared `Source` concept.
+
+## 3.5 RoundSource
+
+`RoundSource` associates sources with rounds.
+
+It records the source order within a round and may record a minimal source role.
+This supports multiple images or ordered frames without duplicating source
+records.
+
+## 3.6 Analysis
+
+An `Analysis` is one attempt to analyze one or more sources.
+
+Every attempt receives a new stable ID. Retries never overwrite prior attempts.
+
+An analysis records:
+
+- Its round.
+- Its input sources.
+- Start and completion times where available.
+- Status.
+- Detector version.
+- Scoring configuration version.
+- Geographic-claim versions used.
+- Evidence and candidate results, where available.
+- Diagnostic information for failures.
+
+## 3.7 AnalysisSource
+
+`AnalysisSource` associates an analysis with the exact source inputs it used.
+
+It records source order, optional role, and the input hash observed at analysis
+time. This preserves the identity of the analyzed input even if the original
+file later moves, becomes unavailable, or changes.
+
+An analysis may reference one or multiple sources. Multi-source aggregation must
+preserve source-level provenance and conflicts.
+
+## 3.8 ImageRegion
+
+An `ImageRegion` identifies the area of a source image used by a measurement or
+observation.
+
+Initial region types may include:
+
+- `full_image`
+- `top_third`
+- `middle_third`
+- `bottom_third`
+- `bounding_box`
+
+The initial implementation does not require advanced segmentation. Region
+records exist so an explanation can distinguish, for example, a measurement from
+the lower image area from a claim about a verified road marking.
+
+## 3.9 Measurement
+
+A `Measurement` is a quantitative value extracted from pixels or another direct
+analysis operation.
+
+Examples include:
+
+- Average brightness.
+- Gray-pixel percentage.
+- Yellow-pixel percentage.
+- Dark-pixel percentage.
+
+A measurement is not automatically a geographic clue.
+
+Measurements should identify their analysis, source or region, feature name,
+value, unit or scale, detector version, and measurement schema version.
+
+## 3.10 Observation
+
+An `Observation` is an interpreted visual result derived from one or more
+measurements.
+
+Examples include:
+
+- `possible_yellow_marking`
+- `road_region_predominantly_gray`
+- `high_dark_pixel_ratio`
+
+An observation should preserve:
+
+- Observation type.
+- Value or state.
+- Confidence in the observation.
+- Supporting measurements.
+- Source region.
+- Detector and schema version.
+- Whether it is positive, ambiguous, absent, or conflicting.
+
+An observation is not yet a country prediction.
+
+## 3.11 GeographicClaim and GeographicClaimVersion
+
+A `GeographicClaim` identifies a geographic knowledge concept. A
+`GeographicClaimVersion` stores an immutable revision of that concept.
+
+A claim may state that an observed feature is associated with a country, region,
+or broader geographic scope.
+
+Each approved claim version should preserve:
+
+- Stable claim and version IDs.
+- Claim content.
+- Geographic scope.
+- Relevant country or region.
+- Source title and URL or equivalent evidence reference.
+- Review status.
+- Claim-truth confidence.
+- Source reliability.
+- Scoring strength.
+- Revision metadata.
+
+The following concepts remain distinct:
+
+- Confidence that the image observation is correct.
+- Confidence that the geographic claim is true.
+- Reliability of the supporting source.
+- Strength assigned by the scoring configuration.
+
+Only approved claim versions may affect new analyses. Proposed, rejected, and
+deprecated claims remain available for audit but cannot affect new scoring.
+
+## 3.12 Evidence
+
+An `Evidence` record is normalized reasoning data associated with an analysis.
+
+It connects observations to geographic interpretations and scoring.
+
+Evidence should preserve:
+
+- Analysis ID.
+- Observation ID.
+- Geographic claim version, when applicable.
+- Value.
+- Confidence.
+- Strength.
+- Reliability.
+- Diagnosticity.
+- Geographic scope.
+- Source or image-region reference.
+- Detector provenance.
+- Evidence direction or state.
+- A deduplication identity.
+
+Evidence directions may include:
+
+- `supporting`
+- `weakening`
+- `inconclusive`
+- `conflicting`
+
+Duplicate detections of the same underlying clue must not count as independent
+evidence unless the scoring configuration explicitly allows it.
+
+## 3.13 Country and Region
+
+A `Country` represents a supported country candidate. A `Region` represents a
+geographic subdivision or area that may be used for reasoning or evaluation.
+
+Countries and regions use stable opaque IDs. Human-readable names, aliases,
+translations, and descriptions are mutable attributes.
+
+Regions use a shared record shape without requiring a universal hierarchy.
+Possible region types include:
+
+- `administrative`
+- `broad_geographic`
+- `physical`
+- `climatic`
+
+A region may have:
+
+- A country association where applicable.
+- An optional parent region.
+- A description.
+- Aliases or alternate spellings.
+
+Physical regions may overlap or cross country borders.
+
+Initial coverage should be limited to useful regions for supported countries.
+Complete worldwide geographic coverage is not required.
+
+## 3.14 ScoringConfiguration and ScoringConfigurationVersion
+
+A `ScoringConfiguration` identifies a scoring method. A
+`ScoringConfigurationVersion` stores the immutable parameters and rules used by
+an analysis.
+
+The version must contain enough information to interpret or reproduce:
+
+- Candidate inclusion rules.
+- Evidence weights.
+- Reliability handling.
+- Diagnosticity handling.
+- Contradiction handling.
+- Missing-evidence handling.
+- Multi-source aggregation.
+- Tie-breaking and ranking behavior.
+
+Historical analyses reference exact configuration versions. Updating a scoring
+rule creates a new version and does not rewrite prior results.
+
+## 3.15 CandidateScore
+
+A `CandidateScore` stores one geographic candidate's result for an analysis.
+The candidate may be a country or a region. Country ranking and regional
+breakdown therefore use the same score and contribution structure instead of
+duplicating scoring logic.
+
+Regional candidates refine a country-level result; they do not replace it.
+Region candidates must reference a region record, and a region's country
+association must be respected when the candidate is evaluated.
+
+Supporting evidence for either candidate type is stored through the same
+`ScoreContribution` relationship. A regional breakdown is therefore a filtered
+or separately ranked view of candidate scores, not a second evidence model.
+
+It may include:
+
+- Analysis ID.
+- Candidate type: `country` or `region`.
+- Country ID when the candidate type is `country`.
+- Region ID when the candidate type is `region`.
+- Total heuristic score.
+- Display rank.
+- Included or excluded status.
+- Candidate-inclusion reason.
+- Evidence-quality summary.
+
+Candidates excluded from the displayed ranking should remain stored when needed
+for auditability. The displayed list may contain only candidates satisfying the
+versioned inclusion rule.
+
+## 3.16 ScoreContribution
+
+A `ScoreContribution` explains how one evidence record affected one candidate.
+
+It should preserve:
+
+- Candidate score ID.
+- Evidence ID.
+- Claim version used.
+- Contribution value.
+- Contribution direction.
+- Weight and parameter details.
+- Calculation version.
+- Structured or human-readable reason.
+
+Contribution values are not probabilities.
+
+The sum of reproducible contributions should explain the candidate's total score,
+subject to explicitly recorded normalization or prior terms.
+
+## 3.17 RawDetectorOutput
+
+`RawDetectorOutput` optionally stores detector output used to create normalized
+measurements or observations.
+
+It should be:
+
+- Associated with an analysis.
+- Versioned by detector and payload schema.
+- Stored separately from normalized evidence.
+- Subject to payload-size and privacy limits.
+
+Raw output is an audit/debugging layer, not the primary explanation contract.
+
+## 3.18 Checkpoint
+
+A `Checkpoint` is a user-requested explanation snapshot.
+
+It references exactly one analysis ID and preserves the prediction and evidence
+shown at that moment.
+
+A checkpoint may include:
+
+- Round ID.
+- Analysis ID.
+- Creation time.
+- Candidate ranking shown.
+- Evidence shown.
+- Contradictions and uncertainty shown.
+- Hint or reveal level.
+- Checkpoint schema version.
+
+Only explanation requests create study checkpoints. Retaining an analysis for
+audit does not make it a user-visible study checkpoint.
+
+## 3.19 PlayerGuessRevision
+
+A `PlayerGuessRevision` records a player-entered guess independently of GeoMeta's
+prediction.
+
+It should preserve:
+
+- Stable guess ID.
+- Round ID.
+- Original country input.
+- Normalized country ID.
+- Original region input.
+- Normalized region ID.
+- Submission time.
+- Optional note or context.
+- Revision or supersession status.
+
+The original entry remains available after normalization or correction.
+
+## 3.20 ActualLocationRevision
+
+An `ActualLocationRevision` records the manually entered actual location.
+
+It must distinguish provisional, verified, corrected, and rejected values.
+
+It should preserve:
+
+- Stable actual-location ID.
+- Round ID.
+- Original country and region input.
+- Canonical country and region IDs.
+- Entry timestamp.
+- Verification status.
+- Correction reason.
+- Provenance or source note.
+- Superseded record reference.
+
+Only the current appropriately verified record is used as current ground truth.
+
+## 3.21 Evaluation
+
+An `Evaluation` compares a particular GeoMeta result and player result against a
+particular actual-location revision.
+
+Evaluations are immutable. An evaluation should identify:
+
+- Round ID.
+- Analysis or checkpoint being evaluated.
+- Player-guess revision.
+- Actual-location revision.
+- Country-level result.
+- Regional-level result.
+- Correct-country rank where applicable.
+- Insufficient-evidence state where applicable.
+- Evaluation-rule version.
+- Creation time.
+- Superseded evaluation, if any.
+
+When ground truth is corrected, a new evaluation is created. The previous
+evaluation remains available for historical comparison but is excluded from
+current performance summaries.
+
+## 3.22 LearningInsight and LearningInsightSupport
+
+A `LearningInsight` is a generated conclusion about study performance.
+
+Insights must distinguish:
+
+- Descriptive observation.
+- Preliminary pattern.
+- Stronger claim about a recurring ability or weakness.
+
+Underlying rounds, guesses, actual locations, and evaluations remain the source
+of truth. Insights are derived data.
+
+A persisted insight snapshot should preserve:
+
+- Profile ID.
+- Generation time.
+- Insight-rule version.
+- Data/query scope.
+- Sample size.
+- Aggregate metrics.
+- Uncertainty information.
+- Current or stale status.
+- Superseded snapshot reference.
+
+`LearningInsightSupport` links an insight to exact rounds, analyses, or
+evaluations when those records materially support the result. Aggregate metrics
+and query scope should also be stored so the snapshot can be interpreted without
+duplicating complete source records.
+
+Transient insights may be computed dynamically and need not be persisted.
+
+---
+
+## 4. Relationships and cardinalities
+
+```text
+Profile
+  1 ──── * StudySession
+              1 ──── * Round
+                          * ──── * Source
+                          │       through RoundSource
+                          │
+                          ├── 1 ──── * Analysis
+                          │              * ──── * Source
+                          │              through AnalysisSource
+                          │
+                          ├── 1 ──── * Checkpoint
+                          │              * ──── 1 Analysis
+                          │
+                          ├── 1 ──── * PlayerGuessRevision
+                          ├── 1 ──── * ActualLocationRevision
+                          └── 1 ──── * Evaluation
+
+Analysis
+  1 ──── * ImageRegion
+  1 ──── * Measurement
+  1 ──── * Observation
+  1 ──── * Evidence
+  1 ──── * CandidateScore
+                  1 ──── * ScoreContribution
+  1 ──── * RawDetectorOutput
+
+Evidence
+  may reference:
+    Observation
+    GeographicClaimVersion
+    ImageRegion
+
+LearningInsight
+  1 ──── * LearningInsightSupport
+```
+
+Additional relationship rules:
+
+- A round belongs to exactly one session.
+- A source may belong to multiple rounds only if the product later permits shared
+  source reuse; otherwise this relationship should be constrained by the initial
+  workflow.
+- An analysis belongs to exactly one round.
+- An analysis has one or more `AnalysisSource` rows.
+- A completed checkpoint references exactly one completed or
+  insufficient-evidence analysis, not a processing or failed attempt.
+- An evaluation references one specific prediction/result and one specific
+  ground-truth revision.
+- A learning insight belongs to one profile.
+- A candidate score has exactly one target: a country or a region.
+- Regional score contributions use the same evidence records and contribution
+  rules as country score contributions.
+
+---
+
+## 5. Lifecycle and status rules
+
+## 5.1 Study sessions
+
+Initial states:
+
+```text
+active
+completed
+abandoned
+archived
+```
+
+`active` permits new rounds. `completed` means the session was intentionally
+finished. `abandoned` means it ended without normal completion but remains
+recoverable for review. `archived` removes it from default active views without
+deleting its records.
+
+## 5.2 Rounds
+
+Initial states:
+
+```text
+created
+active
+completed
+abandoned
+closed_without_guess
+```
+
+`created` has been initialized but not started. `active` accepts sources and
+analysis attempts. `completed` has reached its intended end and may have a
+guess or no guess. `abandoned` ended without normal completion.
+`closed_without_guess` is an intentional terminal state when the player ends
+the round without recording a guess.
+
+## 5.3 Sources
+
+Initial availability states:
+
+```text
+available
+unavailable
+hash_mismatch
+relink_pending
+```
+
+The source record remains when its file is unavailable.
+
+## 5.4 Analyses
+
+Required distinction:
+
+```text
+processing
+completed
+insufficient_evidence
+failed
+timed_out
+```
+
+An optional `cancelled` state may be added if user-controlled cancellation is
+implemented.
+
+### Processing
+
+- Input associations and start time are present.
+- No prediction may be displayed as current from this record.
+
+### Completed
+
+- Completion time is present.
+- Evidence and result data are present according to the analysis contract.
+- At least one eligible candidate is represented by the result contract.
+- If no candidate qualifies, the terminal status is
+  `insufficient_evidence`, not `completed`.
+
+### Insufficient evidence
+
+- Processing completed successfully.
+- The evidence did not justify a useful ranking.
+- A reason and available evidence-quality data are preserved.
+- This is not a technical failure.
+
+### Failed
+
+- Processing did not produce a valid result.
+- A diagnostic category is retained where possible.
+- The record cannot be used as a prediction.
+
+### Timed out
+
+- Processing exceeded its allowed limit.
+- Timeout information is retained where possible.
+- The record cannot be used as a prediction.
+
+Retries create new analysis records.
+
+Every analysis that has recorded inputs preserves their source IDs and observed
+content hashes, including attempts that later fail or time out. A terminal
+analysis is immutable at the input, manifest, evidence, and result level.
+
+## 5.5 Actual locations
+
+Suggested verification states:
+
+```text
+provisional
+verified
+corrected
+rejected
+```
+
+Only an appropriately verified current record is used for current evaluation.
+
+## 5.6 Insight snapshots
+
+Target-model states:
+
+```text
+current
+stale
+superseded
+invalidated
+```
+
+An insight becomes stale when relevant source records, evaluations, or insight
+rules change. Historical snapshots are not silently rewritten.
+
+---
+
+## 6. Proposed logical relational schema
+
+The following is a technology-neutral relational proposal. Field types are
+described conceptually; the eventual database implementation must choose
+engine-specific types and constraints.
+
+All durable tables use an opaque generated ID unless stated otherwise.
+
+## 6.1 Ownership and activity
+
+### `profiles`
+
+| Field | Purpose |
+|---|---|
+| `profile_id` | Primary key |
+| `display_name` | Mutable local profile name |
+| `created_at` | Creation timestamp |
+| `updated_at` | Last metadata update |
+| `status` | Active or archived |
+
+### `study_sessions`
+
+| Field | Purpose |
+|---|---|
+| `session_id` | Primary key |
+| `profile_id` | Owner foreign key |
+| `status` | Session lifecycle state |
+| `started_at` | Start timestamp |
+| `ended_at` | Optional end timestamp |
+| `created_at` | Record creation timestamp |
+
+| `updated_at` | Last state update |
+
+### `rounds`
+
+| Field | Purpose |
+|---|---|
+| `round_id` | Primary key |
+| `session_id` | Parent session foreign key |
+| `status` | Round lifecycle state |
+| `sequence_number` | Optional session-local ordering |
+| `started_at` | Optional start timestamp |
+| `ended_at` | Optional end timestamp |
+| `current_guess_id` | Optional authoritative pointer to the current guess revision |
+| `current_actual_location_id` | Optional authoritative pointer to the current verified actual-location revision |
+| `current_evaluation_id` | Optional authoritative pointer to the current effective evaluation |
+| `created_at` | Record creation timestamp |
+| `updated_at` | Last state update |
+
+The current-record pointers are authoritative. Each must be a foreign key to a
+record belonging to the same `round_id`; they must not be independent IDs that
+can point into another round. This can be enforced with composite foreign keys
+against uniqueness constraints on the child tables.
+
+## 6.2 Sources and relationships
+
+### `sources`
+
+| Field | Purpose |
+|---|---|
+| `source_id` | Primary key |
+| `source_type` | Imported image or captured frame |
+| `source_provenance` | Origin category such as repository sample, external dataset, user import, or live capture |
+| `original_reference` | Local path or equivalent reference |
+| `content_hash` | Hash of the source content |
+| `availability_status` | Current source availability |
+| `unavailability_reason` | Optional reason |
+| `width` | Image width |
+| `height` | Image height |
+| `format` | Image format |
+| `capture_timestamp` | Nullable for imported files |
+| `capture_stream_id` | Nullable capture stream reference |
+| `frame_sequence_number` | Nullable ordering value |
+| `metadata_json` | Versioned non-sensitive metadata, if needed |
+| `created_at` | Record creation timestamp |
+| `updated_at` | Last availability update |
+
+The model stores a reference and hash rather than automatically copying the
+original image. If the file is moved or deleted, derived records remain and the
+source is marked unavailable.
+
+### `round_sources`
+
+| Field | Purpose |
+|---|---|
+| `round_source_id` | Primary key |
+| `round_id` | Round foreign key |
+| `source_id` | Source foreign key |
+| `sequence_number` | Order within the round |
+| `source_role` | Optional minimal role |
+| `associated_at` | Association timestamp |
+
+Recommended uniqueness:
+
+- `(round_id, source_id)`
+- `(round_id, sequence_number)`
+
+### `analysis_sources`
+
+| Field | Purpose |
+|---|---|
+| `analysis_source_id` | Primary key |
+| `analysis_id` | Analysis foreign key |
+| `source_id` | Source foreign key |
+| `sequence_number` | Order used by the analysis |
+| `source_role` | Optional role |
+| `input_content_hash` | Hash observed at analysis time |
+| `input_metadata_snapshot` | Small reproducibility payload, if needed |
+
+Recommended uniqueness:
+
+- `(analysis_id, source_id)`
+- `(analysis_id, sequence_number)`
+
+The `analysis_sources` table is the authoritative record of the exact inputs
+used by an analysis. Its source ID, sequence, and observed hash are immutable
+after the analysis reaches a terminal status.
+
+## 6.3 Analysis and detector output
+
+### `analyses`
+
+| Field | Purpose |
+|---|---|
+| `analysis_id` | Primary key |
+| `round_id` | Round foreign key |
+| `status` | Analysis lifecycle state |
+| `detector_version` | Detector implementation/schema version |
+| `detector_schema_version` | Detector output schema version |
+| `measurement_schema_version` | Measurement contract version |
+| `observation_schema_version` | Observation contract version |
+| `scoring_configuration_version_id` | Exact scoring version |
+| `candidate_inclusion_rule` | Exact inclusion rule used |
+| `aggregation_rule` | Exact multi-source aggregation rule, when applicable |
+| `analysis_manifest_json` | Compact immutable manifest of all input and rule identities |
+| `started_at` | Start timestamp |
+| `completed_at` | Optional completion timestamp |
+| `insufficient_reason` | Required for insufficient-evidence results |
+| `failure_code` | Required where a technical failure is classified |
+| `diagnostic_summary` | Bounded debugging information |
+| `capture_sequence_start` | Optional ordering metadata |
+| `capture_sequence_end` | Optional ordering metadata |
+| `created_at` | Record creation timestamp |
+
+The manifest is a versioned, validated, immutable JSON document. Its initial
+format should contain only the identities needed to reproduce the attempt:
+
+```json
+{
+  "manifest_schema_version": "1",
+  "sources": [
+    {"source_id": "...", "input_content_hash": "...", "sequence": 0}
+  ],
+  "detector": {
+    "implementation_version": "...",
+    "schema_version": "..."
+  },
+  "measurement_schema_version": "...",
+  "observation_schema_version": "...",
+  "geographic_claim_version_ids": [],
+  "scoring_configuration_version_id": "...",
+  "candidate_inclusion_rule": "...",
+  "aggregation_rule": null
+}
+```
+
+`aggregation_rule` is unavailable for single-source analyses and is populated
+only when a multi-source analysis uses an approved aggregation behavior. The
+manifest is validated before a terminal analysis is committed and cannot be
+changed afterward.
+
+### `image_regions`
+
+| Field | Purpose |
+|---|---|
+| `region_id` | Primary key |
+| `source_id` | Source foreign key |
+| `region_type` | Full image, third, box, or future type |
+| `left` | Optional normalized or pixel coordinate |
+| `top` | Optional normalized or pixel coordinate |
+| `right` | Optional normalized or pixel coordinate |
+| `bottom` | Optional normalized or pixel coordinate |
+| `region_version` | Region-generation version |
+
+### `measurements`
+
+| Field | Purpose |
+|---|---|
+| `measurement_id` | Primary key |
+| `analysis_id` | Analysis foreign key |
+| `source_id` | Optional source foreign key |
+| `region_id` | Optional image-region foreign key |
+| `feature_name` | Stable measurement name |
+| `numeric_value` | Measured numeric value |
+| `unit` | Percentage, brightness scale, or other unit |
+| `measurement_schema_version` | Measurement contract version |
+| `detector_version` | Producing detector version |
+
+### `observations`
+
+| Field | Purpose |
+|---|---|
+| `observation_id` | Primary key |
+| `analysis_id` | Analysis foreign key |
+| `observation_type` | Stable observation identifier |
+| `value_json` | Structured observation value |
+| `state` | Positive, ambiguous, absent, or conflicting |
+| `observation_confidence` | Confidence in the visual interpretation |
+| `detector_version` | Producing detector version |
+| `region_id` | Optional source region |
+| `deduplication_key` | Identity for duplicate handling |
+
+### `observation_measurements`
+
+| Field | Purpose |
+|---|---|
+| `observation_id` | Observation foreign key |
+| `measurement_id` | Measurement foreign key |
+| `relationship_type` | Supporting, threshold, or other defined relation |
+
+Primary key should be `(observation_id, measurement_id)`.
+
+### `raw_detector_outputs`
+
+| Field | Purpose |
+|---|---|
+| `raw_output_id` | Primary key |
+| `analysis_id` | Analysis foreign key |
+| `detector_name` | Detector identifier |
+| `detector_version` | Detector version |
+| `payload_schema_version` | Raw payload schema |
+| `payload_reference` | Optional external/local payload reference |
+| `payload_json` | Optional bounded payload |
+| `created_at` | Creation timestamp |
+
+Raw output retention and payload limits remain implementation decisions.
+
+For the initial implementation, normalized measurements, observations,
+evidence, and score contributions are the durable audit surface. Raw detector
+payloads are optional, bounded, and retained only for debugging or schema
+investigation. They must have a detector/schema version, a size limit, and an
+explicit retention policy; they are not required for ordinary explanations.
+
+## 6.4 Geographic knowledge
+
+### `countries`
+
+| Field | Purpose |
+|---|---|
+| `country_id` | Primary key |
+| `canonical_name` | Mutable display name |
+| `external_code` | Optional ISO or equivalent code |
+| `status` | Active, inactive, or archived |
+| `created_at` | Creation timestamp |
+| `updated_at` | Last metadata update |
+
+Recommended uniqueness:
+
+- Canonical active country name.
+- External code when present.
+
+### `regions`
+
+| Field | Purpose |
+|---|---|
+| `region_id` | Primary key |
+| `canonical_name` | Mutable canonical name |
+| `country_id` | Optional country association |
+| `region_type` | Administrative, physical, climatic, or broad |
+| `description` | Geographic description |
+| `parent_region_id` | Optional parent |
+| `status` | Active or archived |
+| `created_at` | Creation timestamp |
+| `updated_at` | Last metadata update |
+
+### `region_aliases`
+
+| Field | Purpose |
+|---|---|
+| `region_alias_id` | Primary key |
+| `region_id` | Canonical region foreign key |
+| `alias_text` | Alternate spelling or translation |
+| `language_or_context` | Optional context |
+
+### `geographic_claims`
+
+| Field | Purpose |
+|---|---|
+| `claim_id` | Stable conceptual claim ID |
+| `claim_type` | Association, exclusion, or other defined type |
+| `created_at` | Claim creation timestamp |
+
+### `geographic_claim_versions`
+
+| Field | Purpose |
+|---|---|
+| `claim_version_id` | Immutable version primary key |
+| `claim_id` | Conceptual claim foreign key |
+| `version_number` | Monotonic version |
+| `claim_content` | Human-readable claim |
+| `country_id` | Optional affected country |
+| `region_id` | Optional affected region |
+| `geographic_scope` | Country, region, broad region, or hemisphere |
+| `source_title` | Source title or evidence label |
+| `source_reference` | URL or equivalent reference |
+| `review_status` | Proposed, approved, rejected, deprecated |
+| `claim_truth_confidence` | Confidence in the claim |
+| `source_reliability` | Reliability of the supporting source |
+| `scoring_strength` | Strength available to scoring |
+| `supersedes_claim_version_id` | Prior version, if applicable |
+| `created_at` | Version creation timestamp |
+| `approved_at` | Optional review timestamp |
+
+## 6.5 Scoring
+
+### `scoring_configurations`
+
+| Field | Purpose |
+|---|---|
+| `scoring_configuration_id` | Stable conceptual configuration ID |
+| `name` | Mutable display name |
+| `created_at` | Configuration creation timestamp |
+
+### `scoring_configuration_versions`
+
+| Field | Purpose |
+|---|---|
+| `scoring_configuration_version_id` | Immutable version primary key |
+| `scoring_configuration_id` | Conceptual configuration foreign key |
+| `version_number` | Monotonic version |
+| `parameters_json` | Versioned rules and parameters |
+| `candidate_inclusion_rule` | Versioned inclusion description |
+| `aggregation_rule` | Multi-source aggregation rule |
+| `missing_evidence_rule` | Missing-data behavior |
+| `contradiction_rule` | Contradiction behavior |
+| `created_at` | Version creation timestamp |
+| `status` | Draft, active, or retired |
+
+Candidate eligibility is configurable through the versioned scoring
+configuration. The initial implementation must not invent numerical thresholds.
+Eligibility may depend on applicable approved claims, evidence quality,
+contradictions, and score separation. If no candidate is eligible, the analysis
+records `insufficient_evidence` rather than forcing a ranking.
+
+### `analysis_claim_versions`
+
+| Field | Purpose |
+|---|---|
+| `analysis_id` | Analysis foreign key |
+| `claim_version_id` | Exact claim version used |
+
+Primary key should be `(analysis_id, claim_version_id)`.
+
+### `candidate_scores`
+
+| Field | Purpose |
+|---|---|
+| `candidate_score_id` | Primary key |
+| `analysis_id` | Analysis foreign key |
+| `candidate_type` | `country` or `region` |
+| `country_id` | Candidate country foreign key when `candidate_type=country` |
+| `region_id` | Candidate region foreign key when `candidate_type=region` |
+| `ranking_context_country_id` | Country context for regional ranking |
+| `total_score` | Ordered heuristic score |
+| `display_rank` | Optional displayed rank |
+| `display_status` | Included or excluded |
+| `inclusion_reason` | Why candidate was or was not displayed |
+| `evidence_quality_summary` | Structured summary |
+
+Recommended uniqueness:
+
+- `(analysis_id, candidate_type, country_id)`
+- `(analysis_id, candidate_type, region_id)`
+
+Required constraints:
+
+- `candidate_type=country` requires `country_id` and forbids `region_id`.
+- `candidate_type=region` requires `region_id` and forbids `country_id`.
+- A region candidate requires `ranking_context_country_id`.
+- The ranking context must match the region's applicable country association
+  when the region is country-specific.
+- Regional ranks are compared only within their ranking context. They do not
+  need to sum to, or numerically equal, the country score.
+
+### `score_contributions`
+
+| Field | Purpose |
+|---|---|
+| `score_contribution_id` | Primary key |
+| `candidate_score_id` | Candidate score foreign key |
+| `evidence_id` | Evidence foreign key |
+| `claim_version_id` | Claim version used |
+| `contribution_value` | Positive, negative, or zero value |
+| `direction` | Supporting, weakening, conflicting, or neutral |
+| `weight_details_json` | Parameters used |
+| `calculation_version` | Calculation implementation version |
+| `reason` | Structured or display explanation |
+
+The candidate score and evidence must belong to the same analysis. This should
+be enforced with a composite foreign key or an equivalent repository check so
+that a contribution from one analysis cannot be attached to a candidate score
+from another.
+
+### `evidence`
+
+| Field | Purpose |
+|---|---|
+| `evidence_id` | Primary key |
+| `analysis_id` | Analysis foreign key |
+| `observation_id` | Observation foreign key |
+| `claim_version_id` | Optional geographic claim version |
+| `region_id` | Optional source region |
+| `evidence_type` | Stable evidence identifier |
+| `value_json` | Structured value |
+| `confidence` | Confidence in observation/evidence |
+| `strength` | Evidence strength |
+| `reliability` | Evidence reliability |
+| `diagnosticity` | Differentiating value |
+| `geographic_scope` | Scope of interpretation |
+| `direction` | Supporting, weakening, inconclusive, conflicting |
+| `deduplication_key` | Duplicate identity |
+| `provenance_json` | Detector/source provenance |
+
+## 6.6 Study records and evaluation
+
+### `checkpoints`
+
+| Field | Purpose |
+|---|---|
+| `checkpoint_id` | Primary key |
+| `round_id` | Round foreign key |
+| `analysis_id` | Exact analysis foreign key |
+| `created_at` | Explanation-request timestamp |
+| `hint_level` | Guided-disclosure state |
+| `display_snapshot_json` | Optional rendered display snapshot |
+| `checkpoint_schema_version` | Snapshot schema version |
+
+### `player_guess_revisions`
+
+| Field | Purpose |
+|---|---|
+| `guess_id` | Primary key |
+| `round_id` | Round foreign key |
+| `original_country_input` | Preserved user input |
+| `country_id` | Normalized country |
+| `original_region_input` | Preserved user input |
+| `region_id` | Normalized region |
+| `submitted_at` | Submission timestamp |
+| `note` | Optional context |
+| `status` | Current, superseded, or withdrawn |
+| `supersedes_guess_id` | Prior guess revision |
+
+The current guess is not inferred from `status`. The authoritative current
+record is `rounds.current_guess_id`.
+
+Required integrity rules:
+
+- `(round_id, guess_id)` is unique for same-round pointer enforcement.
+- `supersedes_guess_id`, when present, references a guess for the same round.
+- The current pointer is updated transactionally and points to at most one
+  revision.
+
+### `actual_location_revisions`
+
+| Field | Purpose |
+|---|---|
+| `actual_location_id` | Primary key |
+| `round_id` | Round foreign key |
+| `original_country_input` | Preserved input |
+| `country_id` | Normalized country |
+| `original_region_input` | Preserved input |
+| `region_id` | Normalized region |
+| `verification_status` | Provisional, verified, corrected, rejected |
+| `entered_at` | Entry timestamp |
+| `provenance_note` | Source or correction note |
+| `supersedes_actual_location_id` | Prior location revision |
+
+Verification status describes the quality or provenance of a location record;
+it does not identify the current revision. The authoritative current verified
+record is `rounds.current_actual_location_id`.
+
+Required integrity rules:
+
+- `(round_id, actual_location_id)` is unique for same-round pointer
+  enforcement.
+- `supersedes_actual_location_id`, when present, references a record for the
+  same round.
+- The current pointer may reference only a verified record.
+- Verification status and revision order remain separate fields and concepts.
+
+### `evaluations`
+
+| Field | Purpose |
+|---|---|
+| `evaluation_id` | Primary key |
+| `round_id` | Round foreign key |
+| `analysis_id` | Prediction being evaluated |
+| `checkpoint_id` | Optional displayed checkpoint |
+| `guess_id` | Player guess revision |
+| `actual_location_id` | Ground-truth revision |
+| `country_result` | Correct, incorrect, or unevaluated |
+| `regional_result` | Correct, incorrect, or unevaluated |
+| `correct_country_rank` | Rank where applicable |
+| `granularity_note` | Shared-level or precision explanation |
+| `evaluation_rule_version` | Evaluation rules |
+| `supersedes_evaluation_id` | Prior evaluation |
+| `created_at` | Evaluation timestamp |
+| `status` | Current or superseded |
+
+Recommended uniqueness and integrity rules:
+
+- `(round_id, evaluation_id)` is unique so `rounds.current_evaluation_id` can
+  be enforced as a same-round composite foreign key.
+- `analysis_id`, `checkpoint_id`, and `guess_id` must reference records for the
+  same round.
+- `supersedes_evaluation_id`, when present, references an evaluation for the
+  same round.
+- Only the evaluation referenced by `rounds.current_evaluation_id` is current
+  for summaries. `status` records historical state and cannot independently
+  select a current evaluation.
+
+The same-round pointer constraints should be enforced by database composite
+foreign keys and unique constraints where the selected relational database
+supports them. If it cannot enforce the verified-status predicate for
+`current_actual_location_id`, a repository transaction or database trigger must
+validate it before updating the pointer, followed by an integrity check when
+reading current records.
+
+Recommended engine-specific enforcement:
+
+- PostgreSQL: use composite `UNIQUE` constraints on each child
+  `(round_id, <record_id>)` pair and matching composite foreign keys from
+  `rounds`. Use a trigger, or a deferred constraint trigger when pointer and
+  verification updates occur together, to require
+  `verification_status = 'verified'` for `current_actual_location_id`.
+- SQLite: enable `PRAGMA foreign_keys = ON` for every connection, use the same
+  composite unique keys and foreign keys, and use a trigger for the verified
+  actual-location predicate. Do not rely on SQLite's default foreign-key
+  setting.
+- Other relational engines: use equivalent composite constraints and a
+  database trigger where a conditional foreign key is unavailable.
+
+If the selected store cannot enforce these rules, the repository must perform
+pointer updates and status validation in one transaction, reject invalid
+references, and run an integrity-check query when loading current records.
+This is an application-level fallback and must not be treated as equivalent to
+database enforcement when database constraints are available.
+
+The authoritative current evaluation is `rounds.current_evaluation_id`.
+`evaluations.status` records whether an evaluation is current or superseded for
+historical display, but it is not the source of truth for selecting the current
+evaluation.
+
+The pointers on `rounds` must use foreign keys that ensure the referenced
+record belongs to the same round. A relational implementation can enforce this
+with composite unique keys such as `(round_id, guess_id)`,
+`(round_id, actual_location_id)`, and `(round_id, evaluation_id)` plus matching
+composite foreign keys. The current actual-location pointer additionally
+requires the referenced record to have `verification_status=verified` (or an
+approved equivalent state), enforced by a database trigger or repository
+transaction if the database cannot express that condition in a foreign key.
+
+When a revision becomes current:
+
+1. Insert the new immutable revision.
+2. Validate its ownership and status.
+3. Update the one round pointer in the same transaction.
+4. Supersede or identify prior records without deleting them.
+
+There is exactly one authoritative mechanism for current records: the pointers
+on `rounds`. Queries and views must derive current summaries from those
+pointers, not independently infer current status.
+
+## 6.7 Learning insights
+
+### `learning_insight_snapshots`
+
+| Field | Purpose |
+|---|---|
+| `insight_id` | Primary key |
+| `profile_id` | Owner profile |
+| `insight_type` | Descriptive, preliminary, or stronger claim |
+| `content` | Generated insight text/structure |
+| `insight_rule_version` | Rules used |
+| `query_scope_json` | Data scope |
+| `sample_size` | Supporting sample count |
+| `aggregate_metrics_json` | Metrics used |
+| `uncertainty_json` | Uncertainty information |
+| `status` | Current, stale, superseded, invalidated |
+| `supersedes_insight_id` | Prior snapshot |
+| `generated_at` | Generation timestamp |
+
+### `learning_insight_support`
+
+| Field | Purpose |
+|---|---|
+| `insight_support_id` | Primary key |
+| `insight_id` | Insight foreign key |
+| `round_id` | Optional supporting round |
+| `analysis_id` | Optional supporting analysis |
+| `evaluation_id` | Optional supporting evaluation |
+| `support_role` | Why the record supports the insight |
+
+At least one support reference or a clearly defined aggregate query scope should
+be retained for any persisted insight.
+
+---
+
+## 7. Integrity constraints and invariants
+
+## 7.1 Identifier integrity
+
+- Every durable entity has an opaque generated ID.
+- IDs are never regenerated when names, labels, aliases, or normalized values
+  change.
+- IDs are never reused.
+- Human-readable labels are not foreign keys.
+
+## 7.2 Session and round integrity
+
+- Every round belongs to exactly one study session.
+- Every study session belongs to exactly one profile.
+- A round represents one location task.
+- A round may be incomplete or abandoned.
+- A round may close without a player guess.
+- Adding sources or analyses does not create a new round.
+
+## 7.3 Source integrity
+
+- An analysis stores the input hash observed at analysis time.
+- A source becoming unavailable does not delete its analyses, evidence,
+  checkpoints, or evaluations.
+- A relinked file must match the stored hash before being considered the same
+  source.
+- A changed file must create a new source identity or be explicitly recorded as
+  changed; it must not silently replace the historical input.
+
+## 7.4 Analysis integrity
+
+- Every analysis attempt has a unique ID.
+- An analysis may transition from `processing` to exactly one terminal status:
+  `completed`, `insufficient_evidence`, `failed`, or `timed_out`.
+- After a terminal transition, its inputs, manifest, evidence, and results
+  cannot be silently rewritten.
+- Retries create new records rather than reopening or overwriting a terminal
+  attempt.
+- Processing, failed, timed-out, insufficient-evidence, and completed states are
+  distinct.
+- Failed and timed-out analyses cannot be used as predictions.
+- Insufficient-evidence analyses are successful executions without a reliable
+  ranking.
+- Completed analyses identify the exact detector, scoring configuration, and
+  geographic claim versions used.
+- The immutable analysis manifest identifies every source ID and input hash,
+  detector implementation and schema versions, measurement and observation
+  schema versions, geographic claim versions, scoring configuration version,
+  candidate-inclusion rule, and multi-source aggregation rule when applicable.
+- An analysis cannot reference a source outside its round unless that
+  relationship is explicitly supported by the workflow.
+- A completed analysis has immutable input associations.
+
+## 7.5 Evidence integrity
+
+- Measurements are not automatically geographic evidence.
+- Every evidence record belongs to one analysis.
+- Evidence must identify its observation or explain why it is directly derived.
+- Evidence should identify source region and detector provenance where available.
+- Missing evidence is not a negative contribution by default.
+- Duplicate evidence is deduplicated unless the scoring version explicitly
+  permits repeated support.
+- Conflicts remain representable and are not silently averaged away.
+
+## 7.6 Knowledge and scoring integrity
+
+- Only approved claim versions affect new scores.
+- Claim corrections create new versions.
+- Scoring configuration corrections create new versions.
+- Historical analyses reference exact versions and are not silently recomputed.
+- Candidate scores are heuristic values, not probabilities.
+- Score contributions explain candidate totals.
+- Candidate inclusion rules are versioned.
+- Excluded candidates remain auditable where required.
+
+## 7.7 Checkpoint integrity
+
+- A checkpoint references exactly one analysis.
+- A checkpoint cannot reference a processing or failed analysis.
+- A checkpoint does not change when later analyses run.
+- Multiple checkpoints may belong to one round.
+- Only explanation requests create study checkpoints.
+
+## 7.8 Guess and ground-truth integrity
+
+- Player guesses are independent from GeoMeta predictions.
+- Actual locations are independent from both predictions and guesses.
+- Original manual input is preserved alongside normalized values.
+- `rounds.current_guess_id` is the authoritative current guess selection.
+- `rounds.current_actual_location_id` is the authoritative current verified
+  actual-location selection.
+- `rounds.current_evaluation_id` is the authoritative current evaluation
+  selection.
+- Each current pointer references a record belonging to the same round.
+- A current actual-location pointer may reference only a verified record.
+- Ambiguous location input is not silently normalized to an arbitrary location.
+
+## 7.9 Evaluation integrity
+
+- Evaluations identify the exact prediction, guess revision, and actual-location
+  revision used.
+- Evaluations are immutable.
+- Corrections create superseding evaluations.
+- Superseded evaluations are excluded from current summaries by default.
+- Country and regional evaluation results are independent.
+- An unevaluated region does not invalidate a valid country evaluation.
+- Regional comparisons record differences in geographic granularity.
+- Current summaries use the current evaluation pointer and exclude evaluations
+  that are not reachable from that pointer.
+
+## 7.10 Learning-insight integrity
+
+- Insights are derived data, not the source of truth.
+- Persisted snapshots identify their rule version and data scope.
+- Supporting records are traceable where materially relevant.
+- Minimum sample requirements are enforced by insight rules.
+- Small samples produce descriptive or unavailable results, not strong ability
+  claims.
+- Stale snapshots remain available for historical review and are not silently
+  rewritten.
+
+---
+
+## 8. Versioning and historical reproducibility
+
+Historical analysis requires more than a software version string. A completed
+analysis should identify:
+
+- Exact source IDs and input hashes.
+- Detector implementation and schema versions.
+- Measurement and observation schema versions.
+- Geographic claim versions.
+- Scoring configuration version.
+- Candidate inclusion rule.
+- Multi-source aggregation rule.
+- Analysis result and evidence records.
+
+These identities should be stored in an immutable analysis manifest associated
+with the analysis. The manifest may be a compact structured payload rather than
+additional normalized tables, provided its fields are validated and its content
+cannot change after the analysis reaches a terminal status.
+
+Changing any scoring-affecting definition must create a new version.
+
+Historical records should not be recomputed automatically. If a new definition
+is applied to old inputs for comparison, it creates a new analysis or explicit
+reanalysis record linked to the original, rather than changing the historical
+result.
+
+Rendered explanation text may be stored as a display snapshot, but normalized
+evidence and score contributions remain the authoritative explanation data.
+
+---
+
+## 9. Evaluation and correction behavior
+
+The intended correction flow is:
+
+```text
+actual location revision A
+        |
+        v
+evaluation A
+        |
+ground-truth correction
+        |
+        v
+actual location revision B
+        |
+        v
+evaluation B supersedes evaluation A
+```
+
+Evaluation A remains available for audit. Current performance summaries use
+evaluation B. Historical reports may explicitly include both versions.
+
+The same pattern applies when a player corrects a guess or when evaluation rules
+change:
+
+- Preserve the old record.
+- Create a new revision or evaluation.
+- Link the new record to the prior record.
+- Identify the current effective record.
+- Exclude superseded records from current summaries.
+
+---
+
+## 10. Privacy, retention, and source availability
+
+The initial source policy is reference-based:
+
+- Store the local source reference.
+- Store a content hash.
+- Store required capture and image metadata.
+- Do not automatically retain unnecessary copies of the original image.
+
+If a source becomes unavailable:
+
+- Preserve the source record.
+- Mark its availability state.
+- Record the reason when known.
+- Preserve derived measurements, evidence, analyses, checkpoints, and
+  evaluations.
+- Permit future relinking after hash verification.
+
+Losing access to a referenced file is different from an explicit user deletion
+request. An unavailable source preserves the source record and derived history.
+An explicit deletion request may remove the stored reference, capture metadata,
+or other study data according to the product's privacy policy; it must not be
+silently treated as an ordinary missing file. Derived records that remain after
+deletion must identify that their original source is unavailable.
+
+Relinking is allowed only after the replacement file is hashed and matches the
+stored content hash. A hash mismatch must remain unavailable or create a new
+source identity; it must not rewrite the historical source.
+
+The initial explicit-deletion operation has a narrow default scope: remove the stored
+original reference and any source-local metadata designated as deletable, mark
+the source unavailable with a deletion reason, and preserve normalized
+measurements, observations, evidence, scores, analyses, and evaluations unless
+the user explicitly requests deletion of those derived study records too.
+Raw detector payloads are deleted with the source-local data unless their
+retention is separately justified and permitted by policy.
+
+If broader deletion is requested, the operation must state whether it removes
+raw detector payloads, normalized analysis records, checkpoints, evaluations,
+or learning-insight support references. The operation must be auditable and
+must not silently reinterpret retained derived records as if the original
+source were still available. Exact retention duration and any legal/privacy
+policy beyond this default remain implementation and policy details.
+
+Capture must be user-controlled and local in the initial product. The exact
+capture mechanism remains an engineering decision.
+
+---
+
+## 11. Initial implementation boundary
+
+The first implementation should not build the entire model at once.
+
+### Essential first slice
+
+The initial persistent slice should support:
+
+1. One local profile.
+2. Study sessions and rounds.
+3. Imported local image sources.
+4. Source hashes and availability state.
+5. One or more analysis attempts per round.
+6. Explicit analysis statuses.
+7. Structured measurements and observations.
+8. Normalized evidence.
+9. Versioned scoring configuration references.
+10. Country candidate scores and score contributions.
+11. Traceable explanations tied to exact analyses.
+12. Source availability and analysis-manifest persistence.
+
+The first slice may use local image files and need not persist study
+checkpoints, player guesses, actual-location revisions, evaluations, regional
+candidate scores, or personalized insight snapshots. Those records remain part
+of the target model and should be added after the core reasoning path is
+validated.
+
+### Defer until justified
+
+The following may remain future work:
+
+- Authentication and multi-user synchronization.
+- Simultaneous capture streams.
+- Automatic game-result extraction.
+- Detailed boundary geometries.
+- Complete worldwide region coverage.
+- Advanced image segmentation.
+- Large raw-detector payload retention.
+- Persistent snapshots for every transient learning calculation.
+- Calibrated probabilities.
+- Automated personalized recommendations based on small samples.
+
+### Recommended implementation order
+
+1. Define stable IDs and status values.
+2. Implement profiles, sessions, rounds, and sources.
+3. Implement analysis attempts and analysis-source relationships.
+4. Persist measurements and observations.
+5. Add versioned claims and scoring configurations.
+6. Persist evidence, country candidate scores, and contributions.
+7. Add checkpoints.
+8. Add player guesses and actual-location revisions.
+9. Add immutable evaluations.
+10. Add regional candidate scoring and evaluation.
+11. Add derived learning-insight calculations.
+
+Each step should have data-integrity tests before the next dependent layer is
+added.
+
+---
+
+## 12. Open decisions
+
+The following decisions remain intentionally unresolved:
+
+1. Database engine and migration tooling.
+2. Exact opaque identifier format and storage type.
+3. Exact source roles and capture-source types.
+4. Whether source metadata snapshots are copied into analyses or reconstructed
+   from immutable source metadata.
+5. Exact evidence deduplication identity.
+6. Whether one observation may produce multiple geographic interpretations.
+7. Whether every supported country receives a candidate-score row or only
+   candidates considered during scoring.
+8. Exact multi-source aggregation and conflict rules beyond the initial
+   single-image implementation.
+9. Exact region canonicalization and alias ownership.
+10. Whether rendered explanations are stored as immutable snapshots, generated
+   from normalized data, or both.
+11. Stronger learning-insight sample thresholds.
+
+Resolved defaults:
+
+- Session and round lifecycle vocabulary is defined in section 5.
+- Source loss preserves records and derived history; relinking requires a
+  matching content hash.
+- Candidate eligibility is configurable and must not use invented numerical
+  thresholds before baseline evidence exists.
+- Country and regional candidates share score/contribution structures, while
+  regional ranks are scoped to their relevant geographic context.
+- The first slice validates single-image country scoring before generalized
+  multi-source aggregation or regional scoring.
+- Explanations are derived from analysis records; persistent checkpoints and
+  personalized insight snapshots are deferred until a concrete study workflow
+  requires them.
+- Raw detector payloads are bounded optional audit data, not the primary
+  durable explanation surface.
+16. Exact capture mechanism and capture permissions.
+
+These open decisions must not be silently resolved by implementation. Each
+should be recorded in the decision log when finalized.
+
+---
+
+## 13. Data-model acceptance criteria
+
+The data model is ready for initial implementation when it can demonstrate that:
+
+1. A profile can own a study session.
+2. A session can contain multiple rounds.
+3. A round can contain multiple ordered sources.
+4. A source can become unavailable without deleting derived history.
+5. Multiple analysis attempts can exist for one round.
+6. Failed, timed-out, insufficient-evidence, and completed analyses remain
+   distinguishable.
+7. An analysis preserves its exact source hashes and rule versions.
+8. Measurements, observations, evidence, and score contributions remain
+   distinguishable.
+9. Country and regional candidate totals use the same contribution structure and
+   can be explained independently.
+10. A checkpoint references one immutable analysis.
+11. Player guesses and actual locations remain separate.
+12. Current guess, verified actual location, and evaluation are selected through
+    authoritative same-round pointers.
+13. Ground-truth corrections create new evaluations rather than rewriting old
+    evaluations.
+14. Country and regional evaluation can be unevaluated independently.
+15. Current summaries exclude superseded evaluations by default.
+16. Learning insight snapshots identify their source scope and rule version.
+17. Historical analyses remain interpretable after newer scoring or knowledge
+    versions are added.
+
+---
+
+## 14. Summary
+
+GeoMeta's data model is centered on traceability and historical integrity.
+
+The core chain is:
+
+```text
+Profile
+  -> StudySession
+    -> Round
+      -> Source
+        -> Analysis
+          -> Measurement
+            -> Observation
+              -> Evidence
+                -> CandidateScore
+                  -> ScoreContribution
+      -> Checkpoint
+      -> PlayerGuessRevision
+      -> ActualLocationRevision
+      -> Evaluation
+  -> LearningInsightSnapshot
+```
+
+This structure supports the product's central promise: GeoMeta should not only
+produce a location ranking, but preserve how that ranking was produced, what the
+player guessed, what the actual location was, and what can responsibly be learned
+from the result.

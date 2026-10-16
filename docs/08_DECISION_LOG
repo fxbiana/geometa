@@ -1,0 +1,436 @@
+﻿# GeoMeta - Decision Log
+
+**Document:** `08_DECISION_LOG`
+**Project:** GeoMeta
+**Status:** Initial decision record
+**Version:** 0.1
+**Last updated:** October 16, 2026
+
+---
+
+## 1. Purpose
+
+This document records decisions that affect GeoMeta's product behavior,
+historical integrity, or cross-document architecture.
+
+It is not a task list and does not replace the detailed requirements in:
+
+- `01_PRODUCT_SPEC`
+- `03_SYSTEM_ARCHITECTURE`
+- `04_DATA_MODEL`
+- `05_REASONING_AND_SCORING`
+- `06_EVALUATION_AND_TESTING`
+
+Technical implementation choices may remain open when they do not change the
+specified product behavior. When an open choice is resolved, it should be
+recorded here and reflected in the affected specification.
+
+### Decision status vocabulary
+
+- **Accepted:** Approved and used as a requirement.
+- **Superseded:** Replaced by a later decision; retained for history.
+- **Open:** Not yet resolved.
+- **Deferred:** Intentionally postponed until a stated prerequisite exists.
+
+---
+
+## 2. Accepted product and architecture decisions
+
+### D-001 - GeoMeta is an explainable geographic-reasoning coach
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** GeoMeta must explain geographic reasoning, uncertainty, evidence
+quality, contradictions, and mistakes rather than only return a location.
+
+**Rationale:** The product's purpose is to teach geographic reasoning. A
+country-only answer is insufficient.
+
+**Consequences:**
+
+- Predictions require traceable evidence and score contributions.
+- Explanations must distinguish observations from geographic interpretations.
+- Learning claims must be grounded in recorded study data.
+
+**References:** `01_PRODUCT_SPEC`, `05_REASONING_AND_SCORING`
+
+### D-002 - A round represents one location task
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** A study session contains multiple rounds. Each round represents
+one location task and may contain multiple source images or frames.
+
+**Rationale:** Sources and analyses may change during one task without creating
+separate rounds.
+
+**Consequences:**
+
+- Sources and analyses belong to rounds.
+- Source order and analysis input order are preserved.
+- Multi-source reasoning remains a target capability.
+
+**References:** `01_PRODUCT_SPEC`, `04_DATA_MODEL`
+
+### D-003 - Analyses are immutable attempts
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Each analysis has its own stable ID. A processing attempt may
+transition to exactly one terminal status:
+
+```text
+completed
+insufficient_evidence
+failed
+timed_out
+```
+
+Retries create new analysis attempts. Terminal inputs, manifests, evidence,
+and results cannot be silently rewritten.
+
+**Rationale:** Historical explanations and evaluations must remain reproducible.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`
+
+### D-004 - Ground truth is evaluation-only
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Player guesses, actual-location revisions, and evaluations must
+not be inputs to prediction components for the prediction being generated.
+
+**Rationale:** The system must not leak the answer into its own reasoning.
+
+**Consequences:**
+
+- Prediction contexts contain source inputs, approved knowledge, and versioned
+  configuration only.
+- Evaluation consumes terminal prediction results.
+- Tests must prove that changing ground truth cannot change an identical
+  prediction.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`06_EVALUATION_AND_TESTING`
+
+### D-005 - Round pointers are the authoritative current-record mechanism
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Current records are selected only through:
+
+- `rounds.current_guess_id`
+- `rounds.current_actual_location_id`
+- `rounds.current_evaluation_id`
+
+Revision status and verification status describe record history and quality;
+they do not independently select the current record.
+
+**Rationale:** Multiple competing definitions of â€œcurrentâ€ would make
+corrections and summaries ambiguous.
+
+**Consequences:**
+
+- Pointers must reference records from the same round.
+- The current actual-location pointer may reference only a verified record.
+- Database constraints should enforce these rules where possible.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`
+
+### D-006 - Preserve source and derived history on ordinary source loss
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** A missing, moved, or inaccessible original image does not delete
+the source record or derived analyses, measurements, observations, evidence,
+scores, checkpoints, or evaluations.
+
+Relinking is permitted only after the replacement content hash matches the
+stored hash. A mismatch cannot rewrite historical input identity.
+
+**Rationale:** File availability is a storage condition, not a correction to
+what was previously analyzed.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`06_EVALUATION_AND_TESTING`
+
+### D-007 - Explicit deletion is separate from source unavailability
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** An explicit user deletion request is a separate operation from a
+missing file.
+
+The default deletion scope removes the original reference and deletable
+source-local metadata, marks the source unavailable with a deletion reason,
+and preserves normalized derived study records. Raw detector payloads are
+removed unless separately retained under an applicable policy.
+
+Broader deletion must explicitly identify which derived records are removed.
+Retained records must show that the original source is unavailable.
+
+**Rationale:** Users need control over stored source data without silently
+destroying the historical reasoning record.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`06_EVALUATION_AND_TESTING`
+
+### D-008 - Countries and regions use separate candidate results
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Country and regional candidates use the same general candidate
+score and contribution model, but remain separate candidate results.
+
+Regions are ranked only within their relevant geographic context. Regional
+candidates require applicable claims and evidence. Regional scores do not need
+to sum to, equal, or decompose country scores.
+
+**Rationale:** Regional reasoning has different geographic contexts and cannot
+be represented honestly as a forced breakdown of country totals.
+
+**Consequences:**
+
+- Regional contributions remain independently traceable.
+- Country and regional evaluation results are independent.
+- Regional scoring is part of the target architecture but not the first slice.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`05_REASONING_AND_SCORING`
+
+### D-009 - Use a versioned immutable analysis manifest
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Every terminal analysis stores a validated, immutable JSON
+manifest containing the exact source IDs and hashes, ordering, detector
+versions, measurement and observation schema versions, geographic claim
+versions, scoring configuration, candidate-inclusion rule, and aggregation
+rule when applicable.
+
+**Rationale:** A collection of mutable version fields is insufficient to
+reproduce a historical analysis reliably.
+
+**Consequences:**
+
+- Single-source analyses record aggregation as unavailable.
+- Failed and timed-out attempts preserve known manifest values.
+- New scoring-affecting definitions require new versions and new analyses.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`05_REASONING_AND_SCORING`, `06_EVALUATION_AND_TESTING`
+
+### D-010 - Candidate eligibility is configurable and supports abstention
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Candidate eligibility rules are versioned, configurable, and
+documented. The initial implementation must not invent numerical thresholds
+before baseline evidence exists.
+
+If no candidate qualifies, the analysis returns explicit
+`insufficient_evidence` rather than forcing a ranking.
+
+**Rationale:** A forced answer would teach unsupported geographic associations
+and conceal uncertainty.
+
+**References:** `04_DATA_MODEL`, `05_REASONING_AND_SCORING`,
+`06_EVALUATION_AND_TESTING`
+
+### D-011 - Evidence remains source-specific
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** When multiple sources disagree, source-specific measurements,
+observations, and evidence remain preserved. Generalized aggregation behavior
+must be versioned when introduced.
+
+Single-image analysis is implemented and validated before generalized
+multi-source aggregation.
+
+**Rationale:** Averaging away disagreement would remove information needed for
+debugging and teaching.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`05_REASONING_AND_SCORING`
+
+### D-012 - Explanations derive from analysis records
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Explanations are generated from stored measurements,
+observations, evidence, claims, candidate scores, and contributions. They must
+not invent evidence or recalculate a historical result with newer rules.
+
+Persistent checkpoints and personalized insight snapshots are deferred until a
+concrete study workflow requires them.
+
+**Rationale:** The normalized analysis record must remain the source of
+reasoning truth.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`05_REASONING_AND_SCORING`
+
+### D-013 - Normalized records are the primary audit surface
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Measurements, observations, evidence, and score contributions
+are the primary durable analysis records. Raw detector payloads are optional,
+bounded, versioned audit data retained for debugging or schema investigation.
+
+Ordinary explanations must not depend on raw payload availability.
+
+**Rationale:** Unbounded detector payloads would increase storage and
+coupling without improving ordinary explanation traceability.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`
+
+### D-014 - First implementation is a local single-image country slice
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** The first implementation validates this chain:
+
+```text
+local image
+  -> source validation and hash
+  -> measurements
+  -> observations
+  -> geographic evidence
+  -> country candidates
+  -> score contributions
+  -> traceable explanation
+```
+
+It does not require live capture, a desktop interface, advanced machine
+learning, generalized multi-source aggregation, regional scoring, or
+persistent personalized insights.
+
+**Rationale:** A narrow vertical slice can validate the reasoning contracts
+before adding product surfaces and larger sources of uncertainty.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`05_REASONING_AND_SCORING`, `06_EVALUATION_AND_TESTING`
+
+### D-015 - Scores are heuristic, not probabilities
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Candidate scores represent ordered heuristic support. They must
+not be presented or serialized as calibrated probabilities without a separate
+calibration decision and evaluation methodology.
+
+**Rationale:** Early scores are rule-based and have not established
+probabilistic validity.
+
+**References:** `01_PRODUCT_SPEC`, `04_DATA_MODEL`,
+`05_REASONING_AND_SCORING`, `06_EVALUATION_AND_TESTING`
+
+### D-016 - Record source provenance without coupling reasoning to acquisition
+
+**Status:** Accepted
+**Date:** October 16, 2026
+**Decision:** Every source records a provenance category describing its origin,
+such as `repository_sample`, `external_dataset`, `user_import`, or
+`live_capture`. Provenance is metadata for filtering, reporting, and
+reproducibility; it is not geographic evidence and must not affect prediction
+unless a future product decision explicitly changes that behavior.
+
+**Rationale:** GeoMeta must compare historical external data, user-provided
+images, and future captures without coupling the reasoning pipeline to one
+acquisition mechanism.
+
+**Consequences:**
+
+- Dataset reports can distinguish the 2021 external corpus from current user
+  images.
+- Source provenance is preserved in source records and analysis inputs.
+- Acquisition adapters remain replaceable.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`,
+`06_EVALUATION_AND_TESTING`, `09_ROADMAP`
+
+---
+
+## 3. Deferred and open decisions
+
+These items are intentionally not silently resolved by implementation.
+
+### O-001 - Database and migration tooling
+
+**Status:** Open
+The database engine, migration tool, and production persistence strategy remain
+implementation decisions. The selected relational store must support the
+documented foreign-key, uniqueness, transaction, and current-pointer rules.
+SQLite is a suitable first-slice option if foreign keys are explicitly enabled
+and conditional verification rules use triggers or repository transactions.
+
+### O-002 - Capture and interface technology
+
+**Status:** Open
+The live capture mechanism, refresh behavior, desktop interface, and future UI
+technology remain open. They must not be required by the first local-image
+slice.
+
+### O-003 - Multi-source aggregation
+
+**Status:** Deferred
+Aggregation and conflict-resolution rules will be designed after single-image
+analysis is validated. They must preserve source-specific evidence and be
+included in the analysis manifest.
+
+### O-004 - Regional contexts
+
+**Status:** Deferred
+The product behavior for contextual regional candidates is accepted, but the
+initial countries and regional schemas to support remain to be prioritized
+after country scoring has a baseline.
+
+### O-005 - Player-facing explanation language
+
+**Status:** Open
+The exact wording for reliability, diagnosticity, contradiction, missing
+evidence, abstention, and score separation requires product/UI review.
+
+### O-006 - Guided hints and disclosure levels
+
+**Status:** Open
+The number and ordering of hint levels remain a product decision. The target
+flow may support staged disclosure, but exact levels are not fixed.
+
+### O-007 - Ranking versus abstention presentation
+
+**Status:** Open
+The product must decide when a low-confidence ranking is shown alongside an
+abstention warning versus when the interface shows abstention only.
+
+### O-008 - Learning-effectiveness study
+
+**Status:** Deferred
+GeoMeta will not claim that a feature improves learning until an approved study
+protocol defines the comparison, measures, and required sample.
+
+---
+
+## 4. Decision maintenance rules
+
+1. A decision must identify the behavior or invariant it controls.
+2. A decision must include its rationale and affected consequences.
+3. Reversing an accepted decision creates a new entry and marks the old entry
+   superseded; history is not deleted.
+4. Changes to accepted decisions must be reflected in every affected
+   specification.
+5. Implementation details may be chosen without an entry when they do not
+   change observable behavior, integrity, or reproducibility.
+6. When implementation reveals a product-level conflict, pause the change and
+   record the conflict as an open decision rather than silently choosing.
+
+---
+
+## 5. Summary
+
+The foundation is sufficiently defined to begin the first local-image country
+reasoning implementation. The remaining open items concern future interfaces,
+regional prioritization, player-facing language, hint behavior, and study
+methodology rather than the integrity of the first analysis pipeline.

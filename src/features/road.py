@@ -1,101 +1,128 @@
+"""Deterministic road-region measurements and visual observations."""
+
+from dataclasses import dataclass
+from typing import List, Tuple
+
 from PIL import Image
-from knowledge import get_clue
 
-def analyze_road(image):
-    width, height = image.size
-
-    # bottom third of image, will likely have road features
-    road_region = image.crop(
-        (0, 2 * height // 3, width, height)
+try:  # Support both ``python -m src.main`` and legacy direct imports.
+    from ..contracts import (
+        ImageRegion,
+        Measurement,
+        Observation,
+        ObservationState,
+        RegionType,
     )
+except ImportError:  # pragma: no cover - compatibility for old scripts
+    from contracts import ImageRegion, Measurement, Observation, ObservationState, RegionType
 
+
+@dataclass(frozen=True)
+class RoadAnalysis:
+    measurements: Tuple[Measurement, ...]
+    observations: Tuple[Observation, ...]
+
+    def as_dict(self) -> dict:
+        """Compatibility representation for the prototype CLI."""
+        return {
+            "features": {item.feature: item.value for item in self.measurements},
+            "observations": [item.observation_type for item in self.observations],
+            "clues": [item.observation_type for item in self.observations if item.state == ObservationState.POSITIVE],
+        }
+
+
+def analyze_road(
+    image: Image.Image,
+    *,
+    source_id: str = "source",
+    analysis_id: str = "analysis",
+    detector_version: str = "prototype-1",
+) -> RoadAnalysis:
+    width, height = image.size
+    if width <= 0 or height <= 0:
+        raise ValueError("image must have positive dimensions")
+    region_box = (0, 2 * height // 3, width, height)
+    road_region = image.crop(region_box)
     pixels = list(road_region.convert("RGB").getdata())
-    total_brightness = 0
-    gray_pixels = 0
-    dark_pixels = 0
-    bright_pixels = 0
-    white_pixels = 0
-    yellow_pixels = 0
+    total_pixels = len(pixels)
+    if not total_pixels:
+        raise ValueError("road region must contain pixels")
 
-
-    # TODO: understand this code
+    counts = {
+        "gray_percentage": 0,
+        "dark_percentage": 0,
+        "bright_percentage": 0,
+        "white_percentage": 0,
+        "yellow_percentage": 0,
+    }
+    total_brightness = 0.0
     for r, g, b in pixels:
         brightness = (r + g + b) / 3
         total_brightness += brightness
-
         if max(r, g, b) - min(r, g, b) < 20:
-            gray_pixels += 1
-
-        # Dark pixel
+            counts["gray_percentage"] += 1
         if brightness < 70:
-            dark_pixels += 1
-
-        # TODO: incorporate brightness & weather conditions into scoring
+            counts["dark_percentage"] += 1
         if brightness > 180:
-            bright_pixels += 1
-
-        # White-ish pixel
+            counts["bright_percentage"] += 1
         if r > 180 and g > 180 and b > 180:
-            white_pixels += 1
-
-        # Yellow-ish pixel
+            counts["white_percentage"] += 1
         if r > 150 and g > 120 and b < 100:
-            yellow_pixels += 1
+            counts["yellow_percentage"] += 1
 
-    total_pixels = len(pixels)
+    region = ImageRegion(source_id, RegionType.BOTTOM_THIRD, region_box)
+    measurements = [
+        Measurement(
+            id=f"{analysis_id}:measurement:average_brightness",
+            analysis_id=analysis_id,
+            source_id=source_id,
+            region=region,
+            feature="average_brightness",
+            value=total_brightness / total_pixels,
+            unit="pixel_intensity_0_255",
+            detector_version=detector_version,
+        )
+    ]
+    for feature, count in counts.items():
+        measurements.append(
+            Measurement(
+                id=f"{analysis_id}:measurement:{feature}",
+                analysis_id=analysis_id,
+                source_id=source_id,
+                region=region,
+                feature=feature,
+                value=count / total_pixels,
+                unit="ratio_0_1",
+                detector_version=detector_version,
+            )
+        )
+    by_feature = {item.feature: item for item in measurements}
+    observations: List[Observation] = []
 
-    average_brightness = total_brightness / total_pixels
-    gray_percentage = gray_pixels / total_pixels
-    dark_percentage = dark_pixels / total_pixels
-    bright_percentage = bright_pixels / total_pixels
-    white_percentage = white_pixels / total_pixels
-    yellow_percentage = yellow_pixels / total_pixels
+    def add(feature: str, observation_type: str, state: ObservationState = ObservationState.POSITIVE) -> None:
+        observations.append(
+            Observation(
+                id=f"{analysis_id}:observation:{observation_type}",
+                analysis_id=analysis_id,
+                source_id=source_id,
+                region=region,
+                observation_type=observation_type,
+                value=True,
+                confidence=0.8,
+                state=state,
+                supporting_measurement_ids=(by_feature[feature].id,),
+                detector_version=detector_version,
+            )
+        )
 
-    observations = []
-    clues = []
-
-    if gray_percentage > 0.60:
-        observations.append("Road region is mostly gray")
-        clues.append("gray_paved_surface")
-
-    if yellow_percentage > 0.03:
-        observations.append("Noticeable yellow pixels detected")
-        clues.append("yellow_road_marking")
-
-    if dark_percentage > 0.20:
-        observations.append("Road region contains many dark pixels")
-        clues.append("dark_road_surface")
-
-    if white_percentage > 0.20:
-        observations.append("Large amount of white detected")
-        clues.append("white_road_surface")
-
+    if by_feature["gray_percentage"].value > 0.60:
+        add("gray_percentage", "road_region_predominantly_gray")
+    if by_feature["yellow_percentage"].value > 0.03:
+        add("yellow_percentage", "possible_yellow_marking", ObservationState.AMBIGUOUS)
+    if by_feature["dark_percentage"].value > 0.20:
+        add("dark_percentage", "high_dark_pixel_ratio")
+    if by_feature["white_percentage"].value > 0.20:
+        add("white_percentage", "large_white_pixel_ratio")
     if not observations:
-        observations.append("No strong road color characteristics detected")
-
-    print("\nObservations:")
-    for observation in observations:
-        print(f"- {observation}")
-
-
-    print("\nROAD ANALYSIS")
-    print("--------------------")
-    print(f"Average brightness: {average_brightness:.2f}")
-    print(f"Gray pixels: {gray_percentage:.2%}")
-    print(f"Dark pixels: {dark_percentage:.2%}")
-    print(f"Bright pixels: {bright_percentage:.2%}")
-    print(f"White pixels: {white_percentage:.2%}")
-    print(f"Yellow pixels: {yellow_percentage:.2%}")
-
-    return {
-        "features": {
-            "average_brightness": average_brightness,
-            "gray_percentage": gray_percentage,
-            "dark_percentage": dark_percentage,
-            "bright_percentage": bright_percentage,
-            "white_percentage": white_percentage,
-            "yellow_percentage": yellow_percentage,
-        },
-        "observations": observations, # narrowing down observations/clues for road analysis
-        "clues": clues,
-    }
+        add("average_brightness", "no_strong_road_color_characteristics", ObservationState.ABSENT)
+    return RoadAnalysis(tuple(measurements), tuple(observations))

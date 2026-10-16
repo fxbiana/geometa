@@ -1,0 +1,785 @@
+# GeoMeta — Reasoning and Scoring Specification
+
+**Document:** `05_REASONING_AND_SCORING`
+**Project:** GeoMeta
+**Status:** Initial reasoning and scoring definition
+**Version:** 0.1
+**Last updated:** October 16, 2026
+
+---
+
+## 1. Purpose and scope
+
+This document defines how GeoMeta turns visual input into inspectable geographic
+reasoning.
+
+It specifies:
+
+- The separation between measurements, observations, geographic evidence, and
+  candidate evaluation.
+- Evidence quality and provenance.
+- Country and regional candidate scoring.
+- Missing, weak, and contradictory evidence.
+- Candidate eligibility and insufficient-evidence behavior.
+- Explanation requirements.
+- Single-image behavior for the first implementation.
+- The target behavior for multiple sources and regional reasoning.
+
+This document defines product behavior and reasoning semantics. Database tables,
+serialization formats, repository interfaces, and detector implementation
+details belong to `03_SYSTEM_ARCHITECTURE` and `04_DATA_MODEL`.
+
+---
+
+## 2. Core reasoning principle
+
+GeoMeta must preserve the distinction between:
+
+```text
+measurement
+  -> observation
+    -> geographic interpretation
+      -> evidence
+        -> candidate contribution
+          -> candidate result
+            -> explanation
+```
+
+A value measured directly from pixels must not automatically become a geographic
+fact.
+
+For example:
+
+```text
+Measurement:
+  4% of pixels in the lower image region satisfy a yellow color threshold.
+
+Observation:
+  A possible yellow marking may be present in the lower image region.
+
+Geographic interpretation:
+  If the observation is reliable enough, it may be consistent with a documented
+  road-marking claim.
+
+Candidate evaluation:
+  The approved claim contributes a versioned heuristic value to applicable
+  countries or regions.
+```
+
+Each transition must retain its source and uncertainty.
+
+---
+
+## 3. Reasoning stages
+
+## 3.1 Measurement
+
+A measurement is a quantitative result extracted from an image or image region.
+
+Examples:
+
+- Average brightness.
+- Gray-pixel percentage.
+- Yellow-pixel percentage.
+- Dark-pixel percentage.
+- Detected line geometry.
+- Text-recognition output.
+
+Measurements should include:
+
+- Stable measurement name.
+- Value and unit or scale.
+- Source ID.
+- Image-region reference.
+- Detector implementation/schema version.
+- Analysis ID.
+
+Measurements are descriptive. They do not independently identify a country.
+
+## 3.2 Observation
+
+An observation is an interpretation of one or more measurements into a visual
+statement.
+
+Examples:
+
+- `possible_yellow_marking`
+- `road_region_predominantly_gray`
+- `possible_right_side_driving`
+- `text_detected_but_unreadable`
+
+An observation should include:
+
+- Stable observation type.
+- Value or state.
+- Confidence that the visual observation is correct.
+- Supporting measurements.
+- Source/image-region provenance.
+- Detector and observation-schema versions.
+- State such as positive, ambiguous, absent, or conflicting.
+
+An observation must not claim that a geographic convention is present unless
+the detector and interpretation rule support that conclusion.
+
+## 3.3 Geographic interpretation
+
+Geographic interpretation associates an observation with one or more approved
+geographic claims.
+
+A claim may describe:
+
+- A country association.
+- A region association.
+- A broad geographic association.
+- A weakening or exclusion relationship.
+
+Interpretation must consider:
+
+- Observation confidence.
+- Claim truth confidence.
+- Source reliability.
+- Diagnosticity.
+- Geographic scope.
+- Whether the observation is ambiguous or conflicting.
+
+Proposed, rejected, or deprecated claims must not affect new candidate scores.
+
+## 3.4 Evidence
+
+Evidence is the normalized unit used by scoring and explanation.
+
+Evidence should preserve:
+
+- Observation reference.
+- Geographic claim-version reference.
+- Value.
+- Observation confidence.
+- Claim reliability.
+- Diagnosticity.
+- Scoring strength.
+- Geographic scope.
+- Source/image-region provenance.
+- Direction.
+- Deduplication identity.
+
+Evidence direction may be:
+
+```text
+supporting
+weakening
+inconclusive
+conflicting
+```
+
+Evidence can be incomplete. Incomplete evidence is not automatically negative
+evidence.
+
+## 3.5 Candidate evaluation
+
+Candidate evaluation applies versioned scoring rules to evidence and produces:
+
+- Candidate score.
+- Per-evidence contributions.
+- Candidate eligibility.
+- Rank within the applicable ranking context.
+- Evidence-quality summary.
+- Uncertainty state.
+
+The explanation must be generated from these stored results.
+
+---
+
+## 4. Evidence quality
+
+## 4.1 Reliability
+
+Reliability describes how likely the system's observation or claim is to be
+correct in the current context.
+
+Examples of lower reliability:
+
+- A color measurement affected by lighting.
+- Text detected at unreadable resolution.
+- A possible road marking inferred from an unsegmented image region.
+
+Reliability is not the same as geographic usefulness.
+
+## 4.2 Diagnosticity
+
+Diagnosticity describes how useful a reliable clue is for distinguishing among
+the current candidates.
+
+A clue may be:
+
+- Reliably observed but common across many countries.
+- Potentially distinctive but weakly observed.
+- Both reliable and distinctive.
+- Neither reliable nor distinctive.
+
+The scoring model must not allow a broad, low-diagnosticity clue to dominate
+more useful evidence solely because it is easy to measure.
+
+## 4.3 Claim truth confidence
+
+Claim truth confidence describes confidence that a geographic knowledge claim is
+correct according to its sources and review status.
+
+It is separate from:
+
+- Confidence that the image observation is correct.
+- Reliability of the source.
+- Scoring strength.
+
+## 4.4 Scoring strength
+
+Scoring strength is the versioned influence assigned by the scoring
+configuration after evidence quality and geographic usefulness are considered.
+
+It is an ordered heuristic parameter, not a probability.
+
+---
+
+## 5. Evidence states
+
+## 5.1 Supporting evidence
+
+Evidence supports a candidate when:
+
+- The observation is sufficiently reliable.
+- An approved claim applies to that candidate.
+- The scoring configuration permits a positive contribution.
+
+The explanation must identify the observation, claim, and contribution.
+
+## 5.2 Weakening evidence
+
+Evidence weakens a candidate when an observed feature conflicts with an
+approved candidate-specific claim or expectation.
+
+Weakening evidence must be based on an observed feature. The absence of a clue
+outside the visible or analyzable area is not weakening evidence.
+
+## 5.3 Contradictory evidence
+
+Evidence is contradictory when meaningful observations support incompatible
+interpretations or candidate associations.
+
+Contradictions must remain visible. The scorer may reduce confidence in a
+candidate or classify the result as uncertain, but must not silently discard the
+conflict.
+
+## 5.4 Missing evidence
+
+Missing evidence means the system could not observe or interpret a clue.
+
+Possible causes include:
+
+- The relevant feature is outside the image.
+- The image quality is insufficient.
+- A detector does not support the feature.
+- The source is unavailable.
+- Analysis failed before the stage completed.
+
+Missing evidence contributes neither support nor weakening by default.
+
+---
+
+## 6. Candidate model
+
+## 6.1 Country candidates
+
+Country candidates form the primary ranking for the initial product.
+
+Each country candidate may have:
+
+- Total heuristic score.
+- Display eligibility.
+- Rank.
+- Supporting evidence.
+- Weakening evidence.
+- Contradictions.
+- Evidence-quality summary.
+
+The initial country score is not a probability.
+
+## 6.2 Regional candidates
+
+Regional candidates are a separate result level that refines a country-level
+result.
+
+Regional candidates:
+
+- Reference canonical region records.
+- Are evaluated within a relevant geographic context.
+- Use approved region-specific claims and evidence.
+- Preserve per-evidence score contributions.
+- Do not need to sum to a country score.
+- Must not make unrelated countries' administrative regions comparable.
+
+The initial implementation validates country scoring first. Regional scoring is
+part of the target architecture and is added after the country baseline has
+been tested.
+
+## 6.3 Ranking context
+
+A ranking context defines the candidate set being compared.
+
+Examples:
+
+```text
+country ranking:
+  all supported countries eligible for the analysis
+
+regional ranking:
+  regions associated with the selected country context
+
+cross-border physical-region ranking:
+  only when an approved rule explicitly defines that comparison
+```
+
+Ranks are meaningful only within their context.
+
+---
+
+## 7. Candidate eligibility and abstention
+
+Candidate eligibility is configurable and versioned.
+
+The eligibility rule may consider:
+
+- Whether an approved geographic claim applies.
+- Whether usable evidence supports the claim.
+- Evidence reliability.
+- Diagnosticity.
+- Contradictions.
+- Score separation.
+- Required candidate context.
+
+The first implementation must not invent numerical eligibility thresholds before
+baseline evidence exists.
+
+If no candidate satisfies the configured eligibility rule, the analysis returns:
+
+```text
+insufficient_evidence
+```
+
+The result must preserve:
+
+- All relevant evidence.
+- Candidates considered.
+- Candidates excluded from display.
+- Exclusion reasons.
+- Evidence-quality and contradiction summaries.
+
+The system must not force a country ranking merely because candidate records
+exist.
+
+---
+
+## 8. Heuristic scoring
+
+## 8.1 Score semantics
+
+Scores are ordered heuristic values used to compare candidates under one
+versioned scoring configuration.
+
+They are not:
+
+- Calibrated probabilities.
+- Guaranteed likelihoods.
+- Percentages of correctness.
+- Player performance scores.
+
+The interface must not describe them as probabilities unless a separate
+calibration process has been evaluated and approved.
+
+## 8.2 Contribution structure
+
+Every displayed candidate score should be explainable through stored
+contributions.
+
+A contribution should identify:
+
+- Candidate.
+- Evidence.
+- Geographic claim version.
+- Direction.
+- Contribution value.
+- Weight or parameter details.
+- Calculation version.
+- Human-readable reason.
+
+Conceptually:
+
+```text
+candidate total
+  = eligible evidence contributions
+  + explicitly recorded priors or normalization terms
+```
+
+If priors or normalization terms are introduced, they must be separately
+identified rather than hidden inside an unexplained total.
+
+## 8.3 Positive contributions
+
+A positive contribution is allowed only when:
+
+- The evidence is applicable to the candidate.
+- The claim is approved.
+- The evidence satisfies the configuration's reliability rules.
+
+## 8.4 Negative contributions
+
+A negative contribution is allowed only when:
+
+- The system observed evidence relevant to the candidate.
+- The observation conflicts with an approved claim or candidate expectation.
+- The configuration permits that type of contradiction or weakening.
+
+Unknown or missing evidence must not receive a negative contribution by default.
+
+## 8.5 Contribution bounds
+
+The initial implementation should use transparent, bounded parameters. Exact
+numeric values should be selected from baseline testing and stored in the
+scoring configuration version.
+
+No parameter should be presented as empirically calibrated until evaluated on
+appropriate data.
+
+---
+
+## 9. Multi-source and multi-frame reasoning
+
+## 9.1 First implementation
+
+The first implementation analyzes one image at a time.
+
+It must validate:
+
+```text
+one source
+  -> measurements
+  -> observations
+  -> evidence
+  -> country candidates
+  -> contributions
+  -> explanation
+```
+
+## 9.2 Target behavior
+
+The target model supports multiple sources or ordered frames in one analysis.
+
+When sources disagree:
+
+- Preserve source-specific measurements.
+- Preserve source-specific observations.
+- Preserve source-specific evidence.
+- Represent the conflict explicitly.
+- Do not average away the disagreement.
+
+Generalized aggregation is deferred until it can be specified and validated.
+Any future aggregation rule must be versioned in the analysis manifest.
+
+Potential future aggregation behavior may distinguish:
+
+- Repeated support across sources.
+- A clue observed only once.
+- Source-specific contradiction.
+- Temporal change.
+- Different image quality.
+
+These are not current scoring rules.
+
+---
+
+## 10. Explanation requirements
+
+## 10.1 Explanation source
+
+Explanations are derived from the completed analysis record.
+
+The explanation service may organize and summarize:
+
+- Measurements.
+- Observations.
+- Geographic claims.
+- Evidence.
+- Candidate scores.
+- Score contributions.
+- Contradictions.
+- Missing evidence.
+- Eligibility decisions.
+- Uncertainty state.
+- Claim provenance.
+
+It must not introduce evidence after scoring.
+
+## 10.2 Candidate explanation
+
+For each displayed candidate, the explanation should show where possible:
+
+- Candidate rank.
+- Heuristic score.
+- Supporting evidence.
+- Weakening or contradictory evidence.
+- Largest score contributions.
+- Reliability and diagnosticity.
+- Geographic scope.
+- Why the candidate was eligible.
+
+## 10.3 Leading-candidate explanation
+
+The leading explanation should answer:
+
+1. Which candidate ranked first?
+2. Which contributions most affected that result?
+3. Which evidence was reliable or unreliable?
+4. What contradicted the leading candidate?
+5. What evidence was missing?
+6. How large was the separation from alternatives?
+7. Is the result sufficiently supported or should it be treated cautiously?
+
+## 10.4 Insufficient-evidence explanation
+
+An insufficient-evidence result should explain:
+
+- Why no candidate qualified.
+- Whether evidence was sparse, unreliable, contradictory, or unavailable.
+- Which observations were available.
+- What additional evidence would have been useful, without pretending it was
+  observed.
+
+## 10.5 Guided disclosure
+
+The product may expose explanations progressively:
+
+```text
+hint
+  -> clue category
+    -> relevant observation
+      -> candidate comparison
+        -> full contribution breakdown
+```
+
+The disclosure level must affect presentation, not the underlying analysis.
+
+Persistent checkpoints and rendered explanation snapshots are deferred until a
+concrete study workflow requires them. If later added, they must reference the
+exact analysis ID and cannot become a second reasoning source.
+
+---
+
+## 11. Knowledge provenance
+
+Every scoring-affecting geographic claim must have:
+
+- Stable claim and version IDs.
+- Claim content.
+- Geographic scope.
+- Applicable country or region.
+- Source title and URL or equivalent evidence reference.
+- Review status.
+- Claim-truth confidence.
+- Source reliability.
+- Scoring parameters or strength.
+
+Approved claims affect new scoring. Proposed, rejected, and deprecated claims
+remain available for audit but do not affect new analyses.
+
+Direct observations and datasets must be traceable even when no conventional
+URL exists.
+
+---
+
+## 12. Versioning and reproducibility
+
+An analysis must preserve a validated immutable manifest containing:
+
+- Ordered source IDs and content hashes.
+- Detector implementation and schema versions.
+- Measurement and observation schema versions.
+- Geographic claim version IDs.
+- Scoring configuration version.
+- Candidate eligibility rule.
+- Multi-source aggregation rule when applicable.
+
+The manifest identifies the reasoning context used by the analysis. Later
+changes to claims, scoring, detectors, or eligibility rules create new versions
+and do not silently alter historical results.
+
+A reanalysis of an old source is a new analysis attempt linked to the original
+when that relationship is useful.
+
+---
+
+## 13. First implementation boundary
+
+The first reasoning milestone should implement only:
+
+1. One local image input.
+2. Structured road measurements.
+3. Structured road observations.
+4. A small approved geographic-claim set.
+5. Normalized evidence.
+6. Country candidate scores.
+7. Per-evidence score contributions.
+8. Explicit candidate eligibility and insufficient-evidence behavior.
+9. A traceable explanation generated from stored analysis data.
+
+It should not require:
+
+- Live capture.
+- A desktop interface.
+- Advanced computer vision.
+- Machine learning.
+- Generalized multi-source aggregation.
+- Regional candidate scoring.
+- Persistent checkpoints.
+- Persistent personalized insights.
+
+The first milestone should be evaluated before expanding the reasoning surface.
+
+---
+
+## 14. Testing requirements
+
+## 14.1 Measurement and observation tests
+
+- Synthetic images produce expected measurements.
+- Measurement units and bounds are validated.
+- Observations identify their supporting measurements.
+- Observation confidence is separate from claim confidence.
+- Observations preserve source-region provenance.
+- A color measurement cannot directly create a country claim without an
+  interpretation rule.
+
+## 14.2 Geographic interpretation tests
+
+- Only approved claim versions affect evidence.
+- Proposed, rejected, and deprecated claims are excluded.
+- Claim provenance is preserved.
+- Missing evidence is not negative evidence.
+- Conflicting observations remain visible.
+- Duplicate evidence follows the configured deduplication rule.
+
+## 14.3 Scoring tests
+
+- Positive contributions affect only applicable candidates.
+- Negative contributions require observed weakening or contradiction.
+- Missing evidence contributes zero by default.
+- Contributions explain candidate totals.
+- Country candidates rank within the country context.
+- Regional candidates rank only within their regional context.
+- Regional totals do not need to equal country totals.
+- Eligibility rules are versioned and configurable.
+- No eligible candidates produce explicit insufficient evidence.
+- Heuristic scores are not represented as probabilities.
+
+## 14.4 Explanation tests
+
+- Every displayed contribution exists in the analysis record.
+- Every displayed clue has observation and geographic provenance where required.
+- Explanations identify the analysis ID.
+- Explanations do not add unsupported evidence.
+- Insufficient-evidence explanations identify the reason for abstention.
+- Explanation presentation can change disclosure level without changing scores.
+
+## 14.5 Reproducibility tests
+
+- The manifest validates before terminal analysis commit.
+- A terminal analysis manifest cannot be silently changed.
+- Re-running the same source with the same versions is reproducible within the
+  documented deterministic limits.
+- Changing a scoring or claim version creates a distinct analysis context.
+
+---
+
+## 15. Risks and mitigations
+
+### R1. Measurements become geographic claims too early
+
+**Risk:** Raw color or brightness values are presented as country evidence.
+
+**Mitigation:** Enforce separate measurement, observation, interpretation, and
+evidence contracts.
+
+### R2. Weak clues dominate ranking
+
+**Risk:** Broad but easy-to-measure clues overwhelm more diagnostic evidence.
+
+**Mitigation:** Keep reliability, diagnosticity, and scoring strength separate;
+make eligibility and parameters versioned and inspectable.
+
+### R3. Missing clues are treated as contradictions
+
+**Risk:** The system penalizes countries for features outside the frame or
+unsupported by the detector.
+
+**Mitigation:** Missing evidence contributes zero by default and is explained
+separately.
+
+### R4. Conflicting evidence is hidden
+
+**Risk:** Aggregation produces a clean ranking that conceals disagreement.
+
+**Mitigation:** Preserve source-specific evidence and defer generalized
+multi-source aggregation until tested.
+
+### R5. Explanations drift from scoring
+
+**Risk:** The explanation service invents a plausible reason after the ranking
+has been calculated.
+
+**Mitigation:** Generate explanations from stored contributions and provenance.
+
+### R6. Scores are mistaken for probabilities
+
+**Risk:** Players interpret heuristic values as calibrated certainty.
+
+**Mitigation:** Use explicit heuristic terminology until calibration is measured
+and approved.
+
+---
+
+## 16. Open product decisions
+
+The following decisions remain product-level rather than implementation details:
+
+1. Which geographic clue categories should be included in the first teaching
+   experience after the road baseline?
+2. How many disclosure levels should guided hints expose?
+3. Which evidence categories should be shown first in a player explanation?
+4. When should a low-confidence ranking be shown alongside an abstention
+   message, rather than being replaced by insufficient evidence?
+5. Which regional contexts should be supported first after country scoring?
+6. What player-facing language should distinguish reliability, diagnosticity,
+   contradiction, and missing evidence?
+
+Technical choices such as database constraints, JSON encoding, repository
+interfaces, and detector implementation structure do not require separate
+product approval unless they change these behaviors.
+
+---
+
+## 17. Summary
+
+GeoMeta's reasoning system must preserve an inspectable chain:
+
+```text
+image
+  -> measurement
+  -> observation
+  -> geographic evidence
+  -> candidate contribution
+  -> candidate score
+  -> eligibility and uncertainty
+  -> explanation
+```
+
+The first implementation validates this chain for one local image and country
+scoring. Regional candidates, multi-source conflict handling, checkpoints, and
+personalized insights remain part of the target architecture and are added only
+after the foundational reasoning behavior is testable and trustworthy.

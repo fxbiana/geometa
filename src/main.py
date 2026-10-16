@@ -1,10 +1,16 @@
 from PIL import Image
 import json
 import os
-from features.road import analyze_road
-from dataset import load_labels
-from metas import create_meta_result
-from reasoning import create_evidence
+try:
+    from .features.road import analyze_road
+    from .dataset import load_labels
+    from .metas import create_meta_result
+    from .reasoning import create_evidence
+except ImportError:  # pragma: no cover - compatibility for ``python src/main.py``
+    from features.road import analyze_road
+    from dataset import load_labels
+    from metas import create_meta_result
+    from reasoning import create_evidence
 
 def load_image(image_path):
     image = Image.open(image_path)
@@ -47,6 +53,7 @@ def main():
         road_data = analyze_road(image)
         evidence = create_evidence()
 
+        road_data = road_data.as_dict()
         metas["road"]["features"] = road_data["features"]
         metas["road"]["observations"] = road_data["observations"]
         metas["road"]["clues"] = road_data["clues"]

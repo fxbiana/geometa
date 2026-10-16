@@ -1,0 +1,606 @@
+# GeoMeta - Evaluation and Testing Specification
+
+**Document:** `06_EVALUATION_AND_TESTING`
+**Project:** GeoMeta
+**Status:** Initial evaluation and testing definition
+**Version:** 0.1
+**Last updated:** October 16, 2026
+
+---
+
+## 1. Purpose and scope
+
+This document defines how GeoMeta verifies correctness, historical integrity,
+reasoning traceability, and prediction quality.
+
+It covers:
+
+- Tests for the first local-image reasoning slice.
+- Evaluation datasets and split rules.
+- Ground-truth isolation.
+- Reproducibility and version verification.
+- Candidate scoring and abstention evaluation.
+- Explanation traceability.
+- Source availability and deletion behavior.
+- Later country, regional, player-learning, and performance evaluation.
+
+This document does not set numerical accuracy targets. Baseline measurements
+must be collected before product targets or eligibility thresholds are chosen.
+
+The testing strategy must verify the behavior specified in
+`01_PRODUCT_SPEC`, `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`, and
+`05_REASONING_AND_SCORING` without treating any one metric as sufficient proof
+that the product teaches geographic reasoning.
+
+---
+
+## 2. Verification principles
+
+### 2.1 Test the exact contract
+
+Tests should assert the required output shape and behavior, not merely that a
+function runs. A passing test must answer what was produced, why it was
+produced, and whether it can be traced to its inputs.
+
+### 2.2 Separate correctness from prediction quality
+
+These are different questions:
+
+1. Did the pipeline preserve and transform data correctly?
+2. Did the configured reasoning rules produce the expected result?
+3. Did the result agree with independently recorded ground truth?
+4. Did the explanation accurately represent the result?
+5. Did the player learn from the interaction?
+
+The first implementation can establish the first four questions. Learning
+effectiveness requires a later study design and must not be inferred from
+prediction accuracy alone.
+
+### 2.3 Test deterministic behavior explicitly
+
+For identical source bytes, versions, claims, candidates, and configuration,
+the normalized measurements, observations, evidence, score contributions,
+candidate results, and explanation inputs should be identical.
+
+Any intentional nondeterminism must be represented in the analysis manifest and
+tested separately.
+
+### 2.4 Preserve uncertainty
+
+Tests must distinguish:
+
+- A completed ranking.
+- An `insufficient_evidence` result.
+- A technical failure.
+- A timeout.
+- An unavailable source.
+- A stale result.
+
+No failure-shaped or uncertain result may be presented as a confident
+prediction.
+
+---
+
+## 3. Test levels
+
+### 3.1 Unit tests
+
+Unit tests cover pure functions and small contracts:
+
+- Image measurements.
+- Observation construction.
+- Geographic interpretation.
+- Candidate eligibility.
+- Score contribution calculation.
+- Explanation formatting from stored records.
+- Hash comparison and source status transitions.
+
+Unit tests should use small synthetic inputs and should not require the full
+application or a live capture source.
+
+### 3.2 Contract tests
+
+Contract tests verify that component boundaries preserve the architecture:
+
+- Detector output conforms to the measurement and observation contracts.
+- Geographic interpretation consumes observations rather than ground truth.
+- Scoring consumes evidence and versioned configuration.
+- Explanation consumes stored analysis results.
+- Evaluation consumes predictions and outcomes but is not an input to prediction.
+
+### 3.3 Integration tests
+
+Integration tests verify the local vertical slice end to end:
+
+```text
+local image
+  -> source validation
+  -> analysis attempt
+  -> measurements
+  -> observations
+  -> evidence
+  -> country scores
+  -> contributions
+  -> explanation
+```
+
+The test should inspect persisted or returned records at each boundary.
+
+### 3.4 Persistence and integrity tests
+
+Persistence tests verify foreign keys, uniqueness, transactions, immutable
+records, current-record pointers, and source retention behavior.
+
+When a relational database is used, these tests must run against the selected
+database rather than only a mock repository. SQLite tests must enable foreign
+keys for every connection.
+
+### 3.5 Evaluation tests
+
+Evaluation tests compare predictions with independently stored actual locations.
+They must not modify the prediction or feed actual locations into prediction
+components.
+
+### 3.6 Exploratory and manual tests
+
+Manual review is appropriate for:
+
+- Whether explanations are understandable.
+- Whether staged hints reveal information in the intended order.
+- Whether uncertainty language is honest.
+- Whether source-specific disagreement is understandable.
+
+Manual review does not replace automated integrity and leakage tests.
+
+---
+
+## 4. First implementation test boundary
+
+The first implementation must validate:
+
+1. One local image can be accepted and hashed.
+2. The source record preserves its identity and availability state.
+3. One analysis attempt records its exact source hash and versions.
+4. Road measurements are normalized with units and provenance.
+5. Measurements produce structured observations.
+6. Approved claims produce normalized evidence.
+7. Country candidates receive traceable score contributions.
+8. Candidate eligibility can return `insufficient_evidence`.
+9. An explanation can be derived from stored analysis records.
+10. Changing ground truth cannot change the prediction.
+11. Repeating the same analysis with the same manifest is reproducible.
+12. A missing source preserves derived history and cannot be silently replaced
+    by a different file.
+
+The first implementation does not need to test or implement:
+
+- Live capture.
+- A desktop interface.
+- Advanced machine learning.
+- Generalized multi-source aggregation.
+- Regional scoring.
+- Persistent personalized insight snapshots.
+- Learning-effectiveness claims.
+
+These remain target architecture features and receive tests when implemented.
+
+---
+
+## 5. Test data and ground truth
+
+### 5.1 Test-data categories
+
+Test data should be separated into:
+
+1. **Synthetic fixtures:** Small generated images designed to exercise known
+   measurement and observation cases.
+2. **Development examples:** Labeled images used while creating or adjusting
+   claims and scoring configuration.
+3. **Validation examples:** Labeled images not used to choose rules or tune
+   parameters.
+4. **Regression fixtures:** Fixed examples representing previously corrected
+   behavior.
+5. **Adversarial fixtures:** Images with misleading colors, ambiguous clues,
+   missing regions, malformed files, and conflicting observations.
+
+Each fixture should record its purpose and provenance. A filename or directory
+alone is not sufficient to establish whether an image was used for development.
+
+### 5.2 Ground-truth record
+
+Ground truth must be stored separately from prediction inputs. A test fixture
+may contain a country and optional region label, but the prediction function
+must receive only source input, approved knowledge, candidate definitions, and
+versioned configuration.
+
+The evaluation harness may join a prediction to ground truth after the
+prediction is terminal.
+
+### 5.3 Leakage controls
+
+The following are prohibited:
+
+- Passing `PlayerGuessRevision`, `ActualLocationRevision`, or `Evaluation` to
+  measurement, observation, interpretation, scoring, or explanation code.
+- Selecting claims or candidates using the actual label of the image being
+  predicted.
+- Tuning thresholds on the held-out validation set.
+- Computing a test metric from examples used to select the scoring rules and
+  presenting it as held-out performance.
+- Using future corrected ground truth to rewrite a historical prediction.
+
+The test suite must include a leakage test that runs identical prediction input
+through two contexts with different guesses and actual-location revisions. The
+prediction records and result must remain identical.
+
+### 5.4 Small-dataset policy
+
+The existing small labeled image set is suitable for pipeline and regression
+tests. It is not sufficient to establish broad geographic accuracy or to
+support strong personalized claims.
+
+Until the dataset grows:
+
+- Report counts alongside every metric.
+- Prefer per-example traces over aggregate claims.
+- Do not tune and claim generalization from the same examples.
+- Treat metrics as diagnostic baseline observations.
+- Record coverage, abstention, and unavailable cases separately.
+
+---
+
+## 6. Unit and contract test requirements
+
+### 6.1 Source validation
+
+Test that:
+
+- A valid image receives a stable content hash.
+- Re-reading identical bytes produces the same hash.
+- A missing file marks the source unavailable without deleting history.
+- A replacement with the same hash can be relinked.
+- A replacement with a different hash is rejected as the historical source.
+- Unsupported formats and unreadable files produce explicit failures.
+- Explicit deletion is distinguishable from ordinary unavailability.
+
+### 6.2 Measurements
+
+Test that:
+
+- Synthetic images produce expected pixel statistics.
+- Measurement units and regions are recorded.
+- Empty or invalid image regions fail explicitly.
+- Measurement values do not claim geographic meaning.
+- Detector and measurement schema versions are preserved.
+
+The tests must cover boundary values around every threshold used by the
+prototype. Thresholds must be tested as configured behavior, not assumed to be
+geographically correct.
+
+### 6.3 Observations
+
+Test that:
+
+- An observation references the measurements that support it.
+- Ambiguous measurements produce an ambiguous observation where configured.
+- Missing pixels or out-of-frame regions are not treated as contradictions.
+- Observation confidence is distinct from geographic claim confidence.
+- Observation names are stable and consistent with the knowledge catalog.
+
+### 6.4 Geographic interpretation
+
+Test that:
+
+- Only approved claim versions affect evidence.
+- Proposed, rejected, and deprecated claims are excluded according to policy.
+- Claim provenance and version identity are retained.
+- Evidence identifies its observation and analysis.
+- Conflicting observations remain representable.
+- Evidence does not read actual-location records.
+
+### 6.5 Candidate eligibility
+
+Test that:
+
+- Candidates require applicable claims and usable evidence.
+- Candidate inclusion behavior comes from a versioned configuration.
+- Excluded candidates and reasons remain auditable where required.
+- No hard-coded threshold bypasses the configured rule.
+- No qualifying candidate returns `insufficient_evidence`.
+- A completed result contains at least one eligible candidate.
+
+### 6.6 Scoring
+
+Test that:
+
+- Contributions have the correct sign and direction.
+- Candidate totals equal their stored contributions under the selected rule.
+- Missing evidence does not become negative evidence by default.
+- Contradictory evidence remains visible.
+- Heuristic scores are not serialized or displayed as probabilities.
+- Replacing a claim or scoring version creates a different analysis result
+  rather than modifying the earlier result.
+
+Regional scoring tests are deferred until regional scoring is implemented. They
+must later verify contextual ranking, applicable candidate inclusion, and
+independent regional totals.
+
+### 6.7 Explanation
+
+Test that:
+
+- Every displayed clue maps to stored evidence.
+- Every displayed contribution maps to a stored score contribution.
+- The explanation identifies the analysis ID.
+- Explanation text does not invent observations or claims.
+- Explanation generation does not recalculate using current versions.
+- An insufficient-evidence explanation describes what is missing or weak.
+- A failed or timed-out analysis cannot produce a normal prediction
+  explanation.
+
+---
+
+## 7. Lifecycle, persistence, and concurrency tests
+
+### 7.1 Analysis lifecycle
+
+Test that:
+
+- An analysis begins in `processing`.
+- It reaches exactly one terminal status.
+- A retry creates a new analysis ID.
+- Terminal inputs, manifests, evidence, and results cannot be silently changed.
+- Failed, timed-out, and insufficient-evidence statuses remain distinct.
+- A timeout is not converted into insufficient evidence.
+- A delayed older result cannot replace a newer accepted result.
+
+### 7.2 Current-record pointers
+
+Test that:
+
+- A current guess pointer references a guess from the same round.
+- A current actual-location pointer references a location from the same round.
+- A current evaluation pointer references an evaluation from the same round.
+- An unverified actual location cannot become the current verified location.
+- Pointer replacement and revision insertion are atomic.
+- Current summaries use pointers rather than inferred status values.
+
+Database-specific tests must verify the composite foreign keys and uniqueness
+constraints. Application fallback tests must verify equivalent rejection when
+the selected store cannot express a conditional constraint.
+
+### 7.3 Source history
+
+Test that:
+
+- Source loss preserves analyses and derived reasoning records.
+- Relinking requires content-hash equality.
+- Hash mismatch never rewrites an analysis input.
+- Explicit deletion records the deletion reason and scope.
+- Retained derived records identify that the original source is unavailable.
+- Raw detector payload retention follows its configured bounded policy.
+
+### 7.4 Ground-truth correction
+
+Test that:
+
+- A corrected actual location creates a new revision.
+- The prior revision remains available for audit.
+- A corrected evaluation supersedes rather than mutates the earlier evaluation.
+- Current summaries exclude superseded evaluations.
+- Prediction records remain unchanged after ground-truth correction.
+
+---
+
+## 8. Reproducibility tests
+
+### 8.1 Manifest completeness
+
+For every terminal analysis with recorded inputs, test that the immutable
+manifest contains:
+
+- Ordered source IDs.
+- Exact input content hashes.
+- Detector implementation and schema versions.
+- Measurement schema version.
+- Observation schema version.
+- Geographic claim version IDs.
+- Scoring configuration version.
+- Candidate inclusion rule.
+- Aggregation rule, or an explicit unavailable value for single-source work.
+
+### 8.2 Replay
+
+Given the same source bytes and manifest dependencies, a replay should produce
+the same normalized result, or explicitly report why replay is unavailable.
+
+Replay must not silently use newer claims, detector code, or scoring rules.
+
+### 8.3 Historical explanation
+
+An explanation generated for an older analysis must use that analysis's stored
+evidence and contributions. Adding a newer claim, scoring version, or detector
+must not change the historical explanation.
+
+---
+
+## 9. Prediction-quality evaluation
+
+### 9.1 Required baseline metrics
+
+Once enough independent labeled examples exist, report:
+
+- Top-1 country accuracy.
+- Top-k country coverage for explicitly selected values of `k`.
+- Country rank of the actual country.
+- Abstention rate.
+- Technical failure rate.
+- Coverage: the proportion of examples producing an eligible ranking.
+- Mean and distribution of score separation, without treating it as
+  probability calibration.
+
+Every metric must include its denominator, excluded cases, dataset version, and
+scoring configuration version.
+
+### 9.2 Regional metrics
+
+After regional scoring and canonicalization are implemented, report regional
+accuracy only for examples with:
+
+- A valid actual region.
+- A supported regional schema.
+- An eligible regional prediction.
+
+Country correctness and regional correctness must be reported separately.
+Regional performance must not be inferred from country scores.
+
+### 9.3 Error analysis
+
+Every baseline evaluation should support inspection of:
+
+- Correct top-ranked predictions.
+- Correct country but incorrect region.
+- Incorrect country with strong score separation.
+- Incorrect country with weak or conflicting evidence.
+- Abstentions.
+- Technical failures.
+- Cases where the actual location was not an eligible candidate.
+
+Error analysis is required before changing claims, thresholds, or scoring
+weights. Changes should be justified by observed failure categories rather than
+only aggregate accuracy.
+
+### 9.4 Calibration and confidence
+
+Scores are heuristic until separately calibrated. Do not call them probabilities
+or use probability-calibration metrics unless a later product decision defines
+calibration data and methodology.
+
+Reliability, diagnosticity, claim confidence, score separation, and prediction
+accuracy must remain distinguishable in reports.
+
+---
+
+## 10. Learning and explanation evaluation
+
+Prediction quality does not prove learning effectiveness.
+
+Later study evaluation may measure:
+
+- Whether players can identify the clue after a hint.
+- Whether players improve on a repeated distinction.
+- Whether explanation review changes subsequent guesses.
+- Whether players can recognize unreliable or contradictory evidence.
+- Whether confidence becomes better aligned with correctness.
+
+Such studies require an approved protocol, a defined comparison, and enough
+observations for the intended claim. Until then, GeoMeta may report descriptive
+interaction counts but must not claim that a feature improves learning.
+
+Explanation quality should initially be assessed through structured manual
+review. Reviewers should check factual support, traceability, uncertainty
+language, ordering, and whether the explanation helps compare candidates.
+
+---
+
+## 11. Test organization and reporting
+
+Tests should be organized by contract rather than only by source file:
+
+```text
+tests/
+  fixtures/
+  unit/
+    test_source_validation
+    test_measurements
+    test_observations
+    test_geographic_interpretation
+    test_scoring
+    test_explanations
+  integration/
+    test_local_image_analysis
+    test_reproducibility
+    test_ground_truth_isolation
+  persistence/
+    test_integrity_constraints
+    test_lifecycle_and_history
+  evaluation/
+    test_baseline_metrics
+    test_error_cases
+```
+
+The exact test framework and filenames remain implementation choices.
+
+Every evaluation report should identify:
+
+- Source dataset and version.
+- Development/validation split.
+- Claim and scoring versions.
+- Detector and schema versions.
+- Number of processed examples.
+- Number of eligible rankings.
+- Number of abstentions.
+- Number of failures and unavailable inputs.
+- Metrics and denominators.
+- Known limitations.
+
+---
+
+## 12. Minimum acceptance criteria
+
+The first implementation is ready for broader feature work when:
+
+1. The local-image pipeline passes measurement, observation, interpretation,
+   scoring, and explanation contract tests.
+2. All terminal analysis statuses are distinct and correctly persisted.
+3. A replay with the same manifest is deterministic.
+4. Ground-truth isolation tests pass.
+5. Source loss, hash-verified relinking, and explicit deletion tests pass.
+6. Current-record pointer integrity tests pass.
+7. Candidate contributions and totals are traceable.
+8. Insufficient evidence is explicit and not confused with technical failure.
+9. Historical explanations remain stable after newer rule versions are added.
+10. A small baseline report can be generated without claiming unsupported
+    accuracy or learning outcomes.
+
+Regional scoring, multi-source aggregation, and personalized learning features
+must meet additional acceptance criteria before being enabled.
+
+---
+
+## 13. Open implementation decisions
+
+The following do not require product approval unless they change observable
+behavior:
+
+1. Test framework and fixture serialization.
+2. Database engine and migration tooling.
+3. Exact metric-report format.
+4. Continuous-integration command and test parallelism.
+5. Storage format for test images.
+6. Exact hashing library and algorithm, subject to manifest requirements.
+
+The following remain product or research decisions:
+
+1. When a low-confidence ranking should be shown alongside an abstention
+   warning.
+2. Which hint levels and explanation ordering are most useful to players.
+3. Which regional contexts should be prioritized.
+4. What evidence-quality terminology players should see.
+5. What study protocol will support a learning-effectiveness claim.
+
+---
+
+## 14. Summary
+
+GeoMeta should be evaluated as both a reasoning system and a learning product.
+
+The immediate testing goal is not to prove broad geographic accuracy. It is to
+prove that one local image can produce a deterministic, versioned, traceable
+country analysis without accessing ground truth, while preserving uncertainty,
+source history, and explanation integrity.
+
+Once that foundation is reliable, independent evaluation data can measure
+country performance, abstention behavior, regional performance, and specific
+failure categories. Learning claims should follow only after a separate study
+evaluation demonstrates them.

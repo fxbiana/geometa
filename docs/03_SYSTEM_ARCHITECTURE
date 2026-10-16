@@ -1,0 +1,1319 @@
+# GeoMeta — System Architecture Specification
+
+**Document:** `03_SYSTEM_ARCHITECTURE`
+**Project:** GeoMeta
+**Status:** Initial architecture definition
+**Version:** 0.1
+**Last updated:** October 16, 2026
+
+---
+
+## 1. Purpose and scope
+
+This document defines the system architecture for GeoMeta.
+
+It translates the product requirements in `01_PRODUCT_SPEC` and the entities
+and invariants in `04_DATA_MODEL` into:
+
+- Component responsibilities.
+- Data-flow boundaries.
+- Runtime states.
+- Input and output contracts.
+- Persistence boundaries.
+- Failure and freshness behavior.
+- Versioning and reproducibility behavior.
+- Initial implementation scope.
+
+This document does not select a desktop UI framework, capture mechanism,
+database engine, deployment model, or machine-learning architecture. Those
+decisions remain open unless explicitly stated here.
+
+The architecture must support a local-image workflow before live capture is
+implemented. Live capture is an input adapter, not a prerequisite for the
+reasoning pipeline.
+
+---
+
+## 2. Architectural goals
+
+GeoMeta's architecture must:
+
+1. Preserve a traceable path from image input to candidate ranking.
+2. Keep image acquisition independent from image interpretation.
+3. Keep measurements separate from observations and geographic claims.
+4. Keep ranking separate from explanation rendering.
+5. Preserve failed, stale, insufficient-evidence, and successful states.
+6. Preserve the exact inputs and rule versions used by historical analyses.
+7. Keep player guesses and actual locations outside prediction inputs.
+8. Support multiple source images or frames for one round.
+9. Permit incremental implementation from the existing Python/Pillow prototype.
+10. Avoid requiring a desktop UI, live capture, or advanced machine learning in
+    the first vertical slice.
+11. Make ground-truth isolation enforceable and testable at component
+    boundaries.
+
+---
+
+## 3. Architectural principles
+
+### 3.1 Stable boundaries over shared implementation details
+
+Components communicate through explicit data contracts rather than importing
+each other's internal data structures.
+
+For example, a detector should return structured measurements and observations.
+It should not directly modify candidate scores or write player-facing
+explanations.
+
+### 3.2 Pure reasoning where practical
+
+Image analysis, geographic interpretation, and scoring should be callable as
+deterministic operations given:
+
+- Source content.
+- Configuration versions.
+- Geographic claim versions.
+- Analysis context.
+
+Persistence and UI orchestration should surround these operations rather than
+being embedded inside them.
+
+### 3.3 Append historical results
+
+Completed analysis results, checkpoints, claim versions, scoring versions,
+guesses, actual-location revisions, and evaluations are historical records.
+Later changes create new records or superseding records rather than silently
+rewriting old results.
+
+### 3.4 Honest freshness
+
+The system must distinguish:
+
+- Current input.
+- Last successful result.
+- A result currently being processed.
+- A stale result from an older input.
+- An unavailable result.
+
+The interface must never present an older successful analysis as if it describes
+the newest frame.
+
+### 3.5 Ground truth is evaluation-only
+
+Actual locations and player-entered outcomes enter the system after or outside
+prediction. They must not be available to acquisition, measurement,
+interpretation, scoring, or explanation components for the same analysis.
+
+This is an architectural boundary, not only a convention. Prediction
+component interfaces must not accept player guesses, actual-location revisions,
+or evaluation results as inputs. The analysis orchestrator must construct a
+prediction context containing only source inputs, approved knowledge, and
+versioned configuration. Evaluation receives prediction results only after the
+prediction is terminal.
+
+### 3.6 Explain from stored reasoning
+
+The explanation layer may format and organize recorded evidence and score
+contributions. It must not invent new evidence to justify an already calculated
+ranking.
+
+---
+
+## 4. High-level architecture
+
+The proposed architecture is a layered pipeline surrounded by orchestration and
+persistence:
+
+```text
+                    +----------------------+
+                    |   User interaction   |
+                    |  UI / CLI / review   |
+                    +----------+-----------+
+                               |
+                               v
+                    +----------------------+
+                    | Session/round        |
+                    | orchestration        |
+                    +----------+-----------+
+                               |
+                 +-------------+--------------+
+                 |                            |
+                 v                            v
+        +------------------+        +------------------+
+        | Acquisition      |        | Study workflow   |
+        | adapters         |        | guesses/results  |
+        +--------+---------+        +--------+---------+
+                 |                           |
+                 v                           v
+        +------------------+        +------------------+
+        | Source registry  |        | Evaluation and  |
+        | and validation   |        | learning        |
+        +--------+---------+        +------------------+
+                 |
+                 v
+        +------------------+
+        | Analysis         |
+        | orchestrator     |
+        +--------+---------+
+                 |
+                 v
+        +------------------+
+        | Measurements and |
+        | observations     |
+        +--------+---------+
+                 |
+                 v
+        +------------------+
+        | Geographic       |
+        | interpretation   |
+        +--------+---------+
+                 |
+                 v
+        +------------------+
+        | Candidate        |
+        | scoring          |
+        +--------+---------+
+                 |
+                 v
+        +------------------+
+        | Result and       |
+        | uncertainty      |
+        +--------+---------+
+                 |
+                 +------------------+
+                 |                  |
+                 v                  v
+        +------------------+  +------------------+
+        | Explanation and  |  | Analysis/check- |
+        | checkpoint       |  | point storage   |
+        +------------------+  +------------------+
+```
+
+The persistence layer is shared by the components that create durable records,
+but those components should depend on repository interfaces rather than on a
+specific database API.
+
+---
+
+## 5. Component responsibilities
+
+## 5.1 User interaction layer
+
+### Responsibility
+
+Provides commands or interface actions for:
+
+- Starting and ending sessions.
+- Creating and completing rounds.
+- Selecting or supplying image inputs.
+- Requesting analysis status.
+- Requesting explanations and hints.
+- Saving checkpoints.
+- Entering guesses and actual locations.
+- Reviewing rounds and the study library.
+
+### Must not
+
+- Calculate geographic scores.
+- Infer facts not present in analysis results.
+- Replace an immutable checkpoint with the latest analysis.
+- Treat stale results as current.
+
+The initial implementation may use a CLI or small local workflow rather than a
+desktop overlay.
+
+## 5.2 Session and round orchestrator
+
+### Responsibility
+
+Coordinates user activity and lifecycle transitions:
+
+- Creates sessions and rounds.
+- Associates sources with rounds.
+- Starts analysis attempts.
+- Tracks current processing status.
+- Requests explanation generation.
+- Creates checkpoints from selected analyses.
+- Coordinates guess, actual-location, and evaluation workflows.
+
+### Must not
+
+- Implement detector-specific image logic.
+- Apply geographic claim rules directly.
+- Mutate historical analysis results.
+
+## 5.3 Acquisition adapters
+
+### Responsibility
+
+Convert an input source into a validated `Source` record.
+
+Initial adapters may include:
+
+- Local image-file input.
+- User-selected screenshot input.
+
+Future adapters may include a selected-window or other local capture mechanism.
+
+### Contract
+
+An acquisition adapter supplies:
+
+- Source bytes or a validated local reference.
+- Source type.
+- Source provenance, such as `repository_sample`, `external_dataset`,
+  `user_import`, or `live_capture`.
+- Dimensions and format.
+- Hash.
+- Capture metadata where applicable.
+
+### Must not
+
+- Know how pixels become geographic clues.
+- Access ground truth.
+- Create a prediction directly.
+
+The exact live capture mechanism remains an open engineering decision.
+
+## 5.4 Source registry and validator
+
+### Responsibility
+
+Maintains source identity and availability:
+
+- Computes or verifies content hashes.
+- Stores source metadata.
+- Detects moved, deleted, or changed files.
+- Supports relinking after hash verification.
+- Preserves unavailable source records.
+
+### Contract
+
+Source validation returns a source status such as:
+
+```text
+available
+unavailable
+hash_mismatch
+relink_pending
+```
+
+Source unavailability does not delete analyses, evidence, checkpoints, or
+evaluations derived from the source.
+
+Loss of access to a source file is distinct from an explicit user deletion
+request. A missing or moved file preserves the source record and derived
+history. Relinking is allowed only after the replacement file is hashed and
+matches the recorded content hash. A mismatch remains unavailable or creates a
+new source identity; it must not rewrite historical inputs.
+
+An explicit deletion request follows the product privacy and retention policy.
+It may remove the original reference or selected metadata while preserving
+derived records where permitted. The system must record that the original
+source is no longer available rather than treating deletion as a normal
+validation failure.
+
+For the initial deletion operation, the source reference and deletable
+source-local metadata are removed, the source is marked unavailable with a
+deletion reason, and normalized measurements, observations, evidence, scores,
+analyses, and evaluations remain unless the user explicitly requests their
+deletion. Raw detector payloads are bounded audit data and may be removed with
+source-local data under the retention policy.
+
+## 5.5 Analysis orchestrator
+
+### Responsibility
+
+Creates and manages one immutable analysis attempt:
+
+1. Records the input source associations.
+2. Captures the input hashes and frame ordering.
+3. Selects detector and scoring versions.
+4. Runs the analysis stages.
+5. Persists intermediate and final records.
+6. Produces an explicit terminal status.
+
+### Statuses
+
+```text
+processing
+completed
+insufficient_evidence
+failed
+timed_out
+```
+
+Retries create new analysis IDs.
+
+An analysis may transition from `processing` to exactly one terminal status:
+`completed`, `insufficient_evidence`, `failed`, or `timed_out`. After that
+transition, its completed inputs, manifest, evidence, and results are
+historical and cannot be silently rewritten. A retry creates a new attempt.
+
+### Must guarantee
+
+- A delayed result cannot overwrite a newer analysis.
+- A failed result cannot be displayed as a prediction.
+- An insufficient-evidence result is not mislabeled as a technical failure.
+- A completed result identifies the exact source and rule versions used.
+
+Initial session and round lifecycle vocabulary is intentionally minimal:
+
+```text
+Session: active, completed, abandoned, archived
+Round: created, active, completed, abandoned, closed_without_guess
+```
+
+These statuses have the meanings defined in `04_DATA_MODEL`. They are
+independent from analysis statuses.
+
+## 5.6 Measurement and observation layer
+
+### Responsibility
+
+Converts source pixels into structured measurements and interpreted visual
+observations.
+
+The conceptual flow is:
+
+```text
+source
+  -> image region
+    -> measurement
+      -> observation
+```
+
+Examples:
+
+```text
+Measurement: yellow pixel proportion = 0.04
+Observation: possible yellow marking in lower region
+```
+
+The observation must not claim a geographic convention unless the interpretation
+layer supports that conclusion.
+
+### Current prototype mapping
+
+The existing [analyze_road](../src/features/road.py) function is an early
+measurement/observation prototype. It currently combines pixel measurement and
+observation generation and returns dictionaries. It should eventually be adapted
+behind this boundary rather than used as the system-wide data contract.
+
+## 5.7 Geographic interpretation layer
+
+### Responsibility
+
+Maps observations to normalized evidence using approved geographic claim
+versions.
+
+It evaluates:
+
+- Whether an observation is sufficiently reliable to interpret.
+- Which geographic claims apply.
+- Geographic scope.
+- Claim reliability and diagnosticity.
+- Whether evidence supports, weakens, conflicts with, or does not distinguish
+  a candidate.
+
+### Must not
+
+- Treat raw measurements as country facts without an interpretation rule.
+- Use proposed or rejected claims for new scoring.
+- Convert missing observations into negative evidence.
+- Read actual-location records.
+
+## 5.8 Candidate scoring engine
+
+### Responsibility
+
+Produces candidate scores and per-evidence score contributions from:
+
+- Normalized evidence.
+- Candidate countries and regions.
+- A versioned scoring configuration.
+- Approved geographic claim versions.
+
+The scoring engine uses one candidate-result structure for both:
+
+- Country candidates, which produce the country ranking.
+- Region candidates, which provide a regional breakdown or refinement.
+
+Regional candidates reference canonical region records and use the same
+evidence and contribution model. Regions are ranked only within their relevant
+geographic context and only when applicable approved claims and evidence support
+their inclusion. Regional scores do not need to sum to country scores and are
+not treated as a decomposition of country scores.
+
+### Output
+
+The scoring engine returns:
+
+- Candidate score records.
+- Regional candidate score records where regional analysis is enabled.
+- Score contributions.
+- Display inclusion status.
+- Candidate rank where applicable.
+- Evidence-quality and contradiction summaries.
+- An explicit insufficient-evidence outcome when no candidate qualifies.
+
+### Semantics
+
+Scores are ordered heuristic values. They are not probabilities.
+
+Missing evidence contributes neither support nor contradiction unless a versioned
+rule explicitly defines a justified alternative.
+
+Candidate eligibility is configurable and documented in the scoring
+configuration. The initial implementation must not invent numerical thresholds
+without baseline evidence. A candidate is eligible only when applicable
+approved claims and available evidence satisfy the configured rule. If no
+candidate is eligible, the result is explicitly `insufficient_evidence`.
+
+## 5.9 Uncertainty and result-state evaluator
+
+### Responsibility
+
+Determines whether the scoring output supports:
+
+- A ranked result.
+- An insufficient-evidence result.
+- A conflicting-evidence warning.
+- A low-separation or low-quality warning.
+
+This component does not alter the underlying score contributions. It classifies
+the result using versioned rules.
+
+## 5.10 Explanation service
+
+### Responsibility
+
+Builds an explanation from stored analysis records:
+
+- Candidate ranking.
+- Supporting evidence.
+- Weakening and contradictory evidence.
+- Missing or unavailable evidence.
+- Reliability and diagnosticity.
+- Score contributions.
+- Uncertainty state.
+- Knowledge provenance.
+
+The explanation service may provide staged disclosure:
+
+```text
+hint
+  -> additional clue
+    -> candidate comparison
+      -> full reasoning
+```
+
+The exact hint levels remain a product/UI decision.
+
+### Must not
+
+- Add evidence that was not recorded.
+- Recalculate scores using a different configuration.
+- Present heuristic scores as calibrated probabilities.
+- Change a historical checkpoint when newer analyses appear.
+
+## 5.11 Checkpoint service
+
+### Responsibility
+
+Creates a durable checkpoint when the player requests an explanation.
+
+A checkpoint references exactly one analysis ID and preserves the explanation
+state shown to the player.
+
+Retaining every analysis does not create a checkpoint. This distinction prevents
+continuous refreshes from inflating study activity.
+
+## 5.12 Study workflow service
+
+### Responsibility
+
+Handles:
+
+- Player guess revisions.
+- Actual-location revisions.
+- Country and regional normalization.
+- Evaluation creation.
+- Evaluation supersession after corrections.
+- Round review.
+
+It must preserve original manual input alongside normalized values.
+
+Current-record selection is authoritative through the round's
+`current_guess_id` and `current_actual_location_id` pointers. Revision status
+and verification status describe history and record quality; they do not
+independently determine which record is current.
+
+## 5.13 Evaluation service
+
+### Responsibility
+
+Compares:
+
+- A specific GeoMeta analysis or checkpoint.
+- A specific player guess revision.
+- A specific actual-location revision.
+
+It produces an immutable evaluation.
+
+The round's `current_evaluation_id` pointer is the authoritative current
+evaluation selection. Evaluation status is historical metadata, not a second
+current-record mechanism. Pointer updates and superseding-record creation occur
+in one transaction and must enforce same-round foreign-key integrity.
+
+Country-level and regional-level results are independent. A region can be
+unevaluated while country evaluation remains valid.
+
+## 5.14 Learning-insight service
+
+### Responsibility
+
+Calculates descriptive and personalized study insights from completed records.
+
+It must:
+
+- Enforce category-specific sample thresholds.
+- Distinguish descriptions from stronger ability claims.
+- Record uncertainty and sample size.
+- Preserve support references for persisted snapshots.
+- Mark snapshots stale when supporting data or insight rules change.
+
+Underlying rounds and evaluations remain the source of truth.
+
+## 5.15 Persistence layer
+
+### Responsibility
+
+Stores and retrieves the entities defined in `04_DATA_MODEL`.
+
+The persistence layer should expose repositories or equivalent interfaces for:
+
+- Profiles and sessions.
+- Rounds and sources.
+- Analyses and analysis-source associations.
+- Measurements, observations, and evidence.
+- Geographic claims and scoring versions.
+- Candidate scores and contributions.
+- Regional candidates and regional score contributions through the same scoring
+  repositories.
+- Checkpoints.
+- Guesses and actual-location revisions.
+- Evaluations.
+- Insight snapshots.
+
+The initial persistence technology remains undecided. The first implementation
+should favor a local, inspectable store that supports transactions and foreign
+key integrity.
+
+Normalized measurements, observations, evidence, and score contributions are
+the primary durable analysis record. Raw detector payloads are optional,
+versioned, bounded by size and retention policy, and retained only for
+debugging or schema investigation. Ordinary explanations must not depend on
+raw payload availability.
+
+When a relational database is selected, enforce same-round current-record
+references with composite foreign keys and uniqueness constraints:
+
+- `(round_id, guess_id)` for `current_guess_id`.
+- `(round_id, actual_location_id)` for `current_actual_location_id`.
+- `(round_id, evaluation_id)` for `current_evaluation_id`.
+
+Enforce that the current actual-location reference points to a verified record
+with a database constraint or trigger where supported. If the selected
+database cannot express the verification predicate, the repository must enforce
+it in one transaction and run integrity checks when loading current records.
+Application checks are a fallback, not a replacement for database constraints
+when the database can enforce them.
+
+Recommended engine-specific enforcement:
+
+- PostgreSQL: use composite `UNIQUE` constraints on each child
+  `(round_id, <record_id>)` pair and matching composite foreign keys from
+  `rounds`. Use a trigger, or a deferred constraint trigger when pointer and
+  verification updates occur together, to require
+  `verification_status = 'verified'` for `current_actual_location_id`.
+- SQLite: enable `PRAGMA foreign_keys = ON` for every connection, use the same
+  composite unique keys and foreign keys, and use a trigger for the verified
+  actual-location predicate. Do not rely on SQLite's default foreign-key
+  setting.
+- Other relational engines: use equivalent composite constraints and a
+  database trigger where a conditional foreign key is unavailable.
+
+If the selected store cannot enforce these rules, the repository must perform
+pointer updates and status validation in one transaction, reject invalid
+references, and run an integrity-check query when loading current records.
+This application-level fallback must be covered by tests and does not replace
+database enforcement where the engine supports it.
+
+---
+
+## 6. End-to-end data flow
+
+## 6.1 Local-image analysis flow
+
+```text
+1. User starts or selects a session.
+2. User creates or selects a round.
+3. User supplies a local image.
+4. Acquisition adapter validates the image.
+5. Source registry computes or verifies the source hash.
+6. Source is associated with the round.
+7. Analysis orchestrator creates a processing attempt.
+8. Analysis source association records the exact input hash.
+9. Detector produces measurements and observations.
+10. Geographic interpretation produces normalized evidence.
+11. Scoring engine calculates candidate totals and contributions.
+12. Result-state evaluator classifies the outcome.
+13. Analysis is stored with a terminal status.
+14. Current analysis status is exposed to the user.
+15. Explanation is generated only when requested.
+16. Explanation request creates a checkpoint.
+17. Player guess and actual location are entered separately.
+18. Evaluation service creates an immutable evaluation.
+19. Review and learning services use the resulting records.
+```
+
+## 6.2 Multi-source or multi-frame flow
+
+```text
+source A ─┐
+source B ─┼─> one AnalysisSource set
+source C ─┘
+              |
+              v
+       independent measurements
+              |
+              v
+       source-aware observations
+              |
+              v
+       explicit aggregation rules
+              |
+              v
+       preserved support and conflict evidence
+```
+
+The first implementation validates single-image analyses. When multiple sources
+are later supported, frames are analyzed independently and source-specific
+evidence is preserved when they disagree. Generalized aggregation rules are
+deferred until they can be specified and validated; they must be versioned and
+must preserve whether a clue appeared repeatedly, only once, or conflicted
+across frames.
+
+## 6.3 Explanation and checkpoint flow
+
+```text
+latest completed analysis
+          |
+          v
+explanation service
+          |
+          +--> staged hint response
+          |
+          +--> full explanation response
+                         |
+                         v
+                 checkpoint service
+                         |
+                         v
+                 immutable checkpoint
+```
+
+The UI must identify the analysis ID represented by the explanation.
+
+## 6.4 Evaluation flow
+
+```text
+player guess revision
+          +
+verified actual-location revision
+          +
+selected analysis/checkpoint
+          |
+          v
+immutable evaluation
+          |
+          v
+round review and current summaries
+```
+
+Corrected actual locations create new evaluations rather than mutating the
+existing evaluation.
+
+---
+
+## 7. Runtime state and freshness
+
+## 7.1 Analysis attempt states
+
+The runtime must distinguish:
+
+```text
+no_input
+processing
+latest_success
+latest_insufficient_evidence
+stale_success
+failed
+timed_out
+unavailable
+```
+
+These are presentation/runtime interpretations of persisted analysis statuses;
+they do not replace the durable analysis status values.
+
+## 7.2 Freshness rules
+
+- A successful result is current only for the exact input association it
+  represents.
+- When a newer frame arrives, the prior result becomes stale relative to that
+  frame.
+- A failed attempt may leave the prior successful result visible, but it must be
+  visibly marked stale.
+- If no successful result exists for the current input, the prediction is
+  unavailable.
+- A stale result must retain its original analysis ID, timestamp, and source
+  reference.
+
+## 7.3 Out-of-order results
+
+Each input and analysis attempt must have ordering metadata, such as a frame
+sequence number or monotonic request ID.
+
+The orchestrator must reject or quarantine a result that belongs to an older
+input when a newer result has already been accepted.
+
+The exact concurrency mechanism remains an implementation decision, but the
+invariant is mandatory.
+
+## 7.4 Timeouts
+
+Timeout behavior must:
+
+- End the processing attempt with `timed_out`.
+- Preserve available diagnostics.
+- Avoid indefinite processing indicators.
+- Permit a later retry with a new analysis ID.
+- Avoid treating timeout as insufficient evidence.
+
+---
+
+## 8. Error handling and failure boundaries
+
+Errors should be explicit and categorized. A failure must not produce a
+success-shaped prediction.
+
+## 8.1 Acquisition failures
+
+Examples:
+
+- File missing.
+- File unreadable.
+- Unsupported format.
+- Hash mismatch.
+- Capture source unavailable.
+
+Expected behavior:
+
+- Preserve any source record already created.
+- Record source availability or acquisition failure.
+- Do not start a prediction analysis without valid input.
+
+## 8.2 Measurement failures
+
+Examples:
+
+- Invalid image dimensions.
+- Decoder error.
+- Detector exception.
+- Unsupported image mode.
+
+Expected behavior:
+
+- End the analysis as failed if no valid result can be produced.
+- Preserve bounded diagnostics.
+- Do not fabricate measurements.
+- Do not reuse a partial result as a complete analysis without an explicit
+  partial-result contract.
+
+## 8.3 Interpretation failures
+
+If measurements exist but geographic interpretation cannot complete:
+
+- Preserve measurements.
+- Preserve available observations.
+- Record the interpretation failure.
+- Mark the analysis failed or otherwise incomplete according to the final
+  status contract.
+- Do not silently treat missing interpretation as contradictory evidence.
+
+## 8.4 Scoring failures
+
+If scoring cannot load the required candidate or configuration versions:
+
+- Mark the attempt failed.
+- Preserve detector output where available.
+- Record the missing version or configuration diagnostic.
+- Do not display a ranking generated from a different configuration.
+
+## 8.5 Persistence failures
+
+If a durable record cannot be written:
+
+- Surface the persistence failure.
+- Avoid claiming that a checkpoint, evaluation, or analysis was saved.
+- Use a transaction or equivalent boundary for records that must be created
+  together.
+- Permit a recoverable retry without duplicating the logical event.
+
+## 8.6 Explanation failures
+
+If explanation generation fails:
+
+- Preserve the analysis.
+- Do not create a successful checkpoint unless the checkpoint contract allows
+  an explicit explanation-failure state.
+- Tell the user that the explanation is unavailable.
+- Do not generate unsupported fallback text.
+
+---
+
+## 9. Versioning and reproducibility
+
+Every completed analysis must identify:
+
+- Source IDs.
+- Input hashes.
+- Source ordering.
+- Detector implementation/schema version.
+- Measurement and observation schema versions.
+- Geographic claim versions.
+- Scoring configuration version.
+- Candidate inclusion rule.
+- Multi-source aggregation rule.
+- Result and evidence records.
+
+These values should also be captured in one compact immutable analysis manifest.
+The manifest may be structured data stored with the analysis rather than a new
+table for every version dimension. Once an analysis reaches a terminal status,
+the manifest cannot be silently rewritten.
+
+For failed or timed-out attempts, the manifest preserves all values known at
+input and scheduling time and marks values that were never selected as
+unavailable. Every attempt still preserves its exact source IDs and observed
+content hashes.
+
+Changing any scoring-affecting definition creates a new version.
+
+Historical analyses are not silently recomputed. A reanalysis of old inputs is a
+new analysis linked to the original where such a relationship is needed.
+
+The explanation service reads normalized stored evidence and contributions.
+Explanations are derived from analysis records. Persistent checkpoints and
+rendered explanation snapshots are deferred until a concrete study workflow
+requires them; if later persisted, they must reference the exact analysis and
+must not become a second source of reasoning truth.
+
+---
+
+## 10. Separation between runtime and durable state
+
+## 10.1 Durable state
+
+The following must survive process restarts when created successfully:
+
+- Profiles.
+- Sessions and rounds.
+- Sources and availability status.
+- Analysis attempts and terminal statuses.
+- Measurements, observations, evidence, and raw outputs retained by policy.
+- Claim and scoring versions.
+- Candidate scores and contributions.
+- Checkpoints.
+- Player guesses.
+- Actual-location revisions.
+- Evaluations.
+- Persisted insight snapshots.
+
+## 10.2 Runtime-only state
+
+The following may remain temporary:
+
+- In-memory image objects.
+- Detector work buffers.
+- Processing queues.
+- Progress indicators.
+- Temporary capture buffers.
+- Uncommitted explanation drafts.
+- Transient learning calculations.
+
+Runtime state must not be presented as durable study history until persistence
+succeeds.
+
+---
+
+## 11. Interfaces between components
+
+The initial implementation should define language-level interfaces or typed
+contracts around these operations.
+
+## 11.1 Acquisition
+
+```text
+acquire(input_reference) -> SourceInput
+validate(SourceInput) -> SourceValidationResult
+```
+
+`SourceInput` contains source identity and metadata, not geographic meaning.
+Its provenance identifies where the input came from and must not be interpreted
+as geographic evidence.
+
+## 11. Measurement
+
+```text
+measure(source_input, detector_config)
+    -> MeasurementSet
+```
+
+Measurements identify values, units, regions, and provenance.
+
+## 11. Observation
+
+```text
+interpret_measurements(measurements, detector_config)
+    -> ObservationSet
+```
+
+Observations are visual interpretations, not country rankings.
+
+## 11. Geographic interpretation
+
+```text
+interpret_geography(observations, approved_claim_versions)
+    -> EvidenceSet
+```
+
+The operation must preserve claim provenance and uncertainty.
+
+## 11. Scoring
+
+```text
+score(evidence, candidates, scoring_configuration_version)
+    -> RankingResult
+```
+
+`RankingResult` contains candidate scores, contributions, inclusion status, and
+uncertainty classification.
+
+## 11. Explanation
+
+```text
+explain(analysis_result, disclosure_level)
+    -> Explanation
+```
+
+The explanation is derived from the stored result and cannot add unsupported
+facts.
+
+## 11. Evaluation
+
+```text
+evaluate(prediction, player_guess, actual_location, evaluation_rules)
+    -> EvaluationResult
+```
+
+Evaluation consumes recorded outcomes and is not part of prediction.
+
+---
+
+## 12. Initial implementation architecture
+
+The first implementation should be a local, non-UI vertical slice:
+
+```text
+local image file
+  -> source validation and hash
+  -> one round
+  -> analysis attempt
+  -> road measurements
+  -> normalized road observations
+  -> minimal approved geographic claims
+  -> candidate scores
+  -> score contributions
+  -> traceable explanation
+```
+
+The first slice does not require live capture, a desktop interface, advanced
+machine learning, persistent player-study workflows, or persistent
+personalized-insight snapshots. Checkpoints, guesses, actual locations,
+evaluations, and regional candidate scoring are target-model features to add
+after the local reasoning path is validated.
+
+## 12.1 Recommended initial modules
+
+The existing source layout can evolve toward:
+
+```text
+src/
+  acquisition/
+  analysis/
+    measurements/
+    observations/
+  geography/
+  scoring/
+  explanation/
+  study/
+  persistence/
+  models/
+```
+
+This is a conceptual direction, not a requirement to create all directories at
+once.
+
+## 12.2 Existing prototype mapping
+
+| Existing module | Architectural role | Current condition |
+|---|---|---|
+| `src/main.py` | Temporary orchestration/CLI | Mixes orchestration, paths, output, and labels |
+| `src/dataset.py` | Label/ground-truth loading | Minimal CSV loader |
+| `src/features/road.py` | Measurement and observation prototype | Returns dictionaries and prints diagnostics |
+| `src/detection.py` | Intended detector layer | Mostly stubs and hardcoded test values |
+| `src/metas.py` | Intended metadata model | Category container; missing the referenced `GeoMetas` type |
+| `src/knowledge.py` | Geographic claim catalog prototype | Partial clue descriptions; not connected to scoring |
+| `src/reasoning.py` | Evidence/explanation prototype | Container and helper only |
+| `src/scoring.py` | Candidate scoring prototype | Disconnected and expects a different meta representation |
+
+The initial framework should adapt or replace these contracts deliberately. It
+should not expand the current inconsistencies into additional layers.
+
+---
+
+## 13. Deferred architecture
+
+The following are explicitly deferred:
+
+- Exact desktop UI technology.
+- Exact live capture mechanism.
+- Simultaneous capture streams.
+- Cloud synchronization.
+- Authentication and multi-user access.
+- Automatic game-result extraction.
+- Advanced computer vision.
+- Machine-learning model serving.
+- Calibrated probabilities.
+- Full worldwide geographic coverage.
+- Detailed geographic boundary geometry.
+- Automatic player learning recommendations from small samples.
+
+These features must use the established analysis and persistence contracts if
+implemented later.
+
+---
+
+## 14. Architecture risks and mitigations
+
+## 14.1 Capture coupling
+
+**Risk:** Live capture assumptions spread into image analysis and prevent local
+testing.
+
+**Mitigation:** Keep acquisition adapters separate and require the analysis
+engine to accept validated local sources.
+
+## 14.2 Explanation drift
+
+**Risk:** The explanation layer invents or reinterprets evidence after scoring.
+
+**Mitigation:** Generate explanations from stored observations, evidence, and
+score contributions. Test contribution-to-explanation traceability.
+
+## 14.3 Historical mutation
+
+**Risk:** Updating claims or scoring changes old checkpoints and evaluations.
+
+**Mitigation:** Use immutable versions and analysis references to exact versions.
+
+## 14.4 Stale-result confusion
+
+**Risk:** A failed or delayed analysis appears to describe the current frame.
+
+**Mitigation:** Track source/frame ordering, analysis IDs, timestamps, and
+freshness status separately.
+
+## 14.5 Weak visual interpretation
+
+**Risk:** Raw color measurements become unjustifiably strong geographic clues.
+
+**Mitigation:** Preserve measurement, observation, interpretation, and scoring as
+separate stages with independent confidence and reliability.
+
+## 14.6 Persistence duplication
+
+**Risk:** Retries or repeated explanation requests create duplicate logical
+records.
+
+**Mitigation:** Use stable event/record IDs, explicit analysis attempts, unique
+relationships, and transaction boundaries.
+
+## 14.7 Overbuilding the framework
+
+**Risk:** A desktop overlay, live capture, or broad database schema is built
+before the reasoning contract is validated.
+
+**Mitigation:** Implement the local-image vertical slice first and keep future
+adapters behind the same interfaces.
+
+---
+
+## 15. Testing implications
+
+The architecture requires tests at several boundaries.
+
+### Acquisition tests
+
+- Valid local image.
+- Missing file.
+- Unsupported image.
+- Hash verification.
+- Moved or relinked source.
+
+### Analysis orchestration tests
+
+- New attempt gets a new ID.
+- Retry does not overwrite an earlier attempt.
+- A processing attempt can reach only one terminal status.
+- Terminal inputs, manifests, evidence, and results cannot be silently
+  rewritten.
+- Failure and insufficient evidence remain distinct.
+- Out-of-order results cannot replace newer results.
+- Timeout produces a terminal timeout state.
+
+### Ground-truth isolation tests
+
+- Prediction components receive no player-guess, actual-location, or evaluation
+  repository/context dependency.
+- Supplying or changing ground-truth records cannot change a prediction for the
+  same source and configuration.
+- Evaluation can consume a terminal prediction, but prediction cannot consume
+  evaluation output.
+
+### Measurement and observation tests
+
+- Synthetic images produce expected measurements.
+- Measurements retain region and detector provenance.
+- Observations do not claim more than their input supports.
+
+### Geographic interpretation tests
+
+- Only approved claims affect evidence.
+- Proposed/rejected claims are excluded.
+- Missing evidence is not negative evidence.
+- Duplicate observations follow the configured deduplication rule.
+
+### Scoring tests
+
+- Contributions sum to candidate totals.
+- Positive and negative evidence are preserved.
+- Candidate inclusion is versioned.
+- Heuristic scores are not serialized as probabilities.
+- Regional candidates are ranked only within their configured context.
+- Regional score contributions remain traceable and do not need to sum to
+  country scores.
+- No-candidate eligibility produces explicit insufficient evidence.
+- Insufficient evidence is returned when no candidate qualifies.
+
+### Explanation tests
+
+- Every displayed contribution exists in stored scoring data.
+- Explanations identify the analysis ID.
+- Explanations do not introduce unsupported clues.
+- Checkpoints remain unchanged after later analyses.
+
+### Persistence and history tests
+
+- Source deletion preserves derived records.
+- A replacement source is relinked only when its content hash matches.
+- An explicit deletion request is distinguishable from ordinary source
+  unavailability.
+- Same-round current-record pointers reject references to another round.
+- A current actual-location pointer rejects unverified records.
+- Claim updates do not alter historical analyses.
+- Ground-truth correction creates a superseding evaluation.
+- Superseded evaluations are excluded from current summaries.
+
+---
+
+## 16. Open architectural decisions
+
+The following decisions remain intentionally open:
+
+1. Database engine and migration tooling.
+2. Exact UI technology.
+3. Exact local capture mechanism.
+4. Whether analysis execution is a synchronous call, worker queue, or hybrid.
+5. Exact concurrency and cancellation mechanism.
+6. Whether source metadata snapshots are copied into analysis records.
+7. Exact multi-source aggregation rules beyond source-specific conflict
+   preservation.
+8. Exact explanation disclosure levels.
+9. Exact repository and transaction interfaces.
+10. Exact supported Python version and packaging strategy.
+11. Whether a local database is required for the first vertical slice or a
+    temporary repository implementation is sufficient.
+
+Open decisions must be recorded in `08_DECISION_LOG` when resolved. They should
+not be silently chosen by feature implementation.
+
+---
+
+## 17. Initial architecture acceptance criteria
+
+The architecture is ready for implementation when a prototype can demonstrate
+that:
+
+1. A local image can enter through an acquisition boundary.
+2. A source receives a stable identity and content hash.
+3. A round can contain the source without coupling to a capture mechanism.
+4. An analysis attempt records exact source inputs and versions.
+5. Measurements and observations remain separate.
+6. Geographic evidence remains separate from raw measurements.
+7. Candidate scores have traceable contributions.
+8. Insufficient evidence is distinct from technical failure.
+9. A stale result cannot be presented as current for a newer input.
+10. An explanation references the exact analysis it describes.
+11. A checkpoint remains stable after later analyses.
+12. Ground truth is unavailable to prediction components.
+13. A corrected actual location creates a new evaluation.
+14. The local-image path can be tested without live capture or a desktop UI.
+
+---
+
+## 18. Summary
+
+GeoMeta should be implemented as a source-independent, versioned reasoning
+pipeline surrounded by explicit study and persistence workflows:
+
+```text
+input source
+  -> source identity and validation
+  -> analysis attempt
+  -> measurements
+  -> observations
+  -> geographic evidence
+  -> candidate scoring
+  -> uncertainty/result state
+  -> explanation
+  -> optional checkpoint
+  -> player and actual-location evaluation
+  -> learning records
+```
+
+The first implementation should validate this chain with local images and a
+small deterministic reasoning engine. Live capture, UI technology, advanced
+computer vision, and long-term personalization should be added only after the
+underlying contracts are testable and historical behavior is trustworthy.
