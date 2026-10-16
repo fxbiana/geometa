@@ -4,10 +4,8 @@ CLUES = {
             "description": "Yellow road marking detected",
             "diagnosticity": "medium",
             "reliability": "medium",
-            "countries": [],
-            "supports": [],
-            "weakens": [],
-            "source": "Initial GeoMeta observation",
+            "geographic_scope": "broad",
+            "evidence": {}
         },
 
         "gray_paved_surface": {
@@ -16,35 +14,25 @@ CLUES = {
             "reliability": "medium",
             "countries": [],
             "supports": [],
-            "weakens": [],
-            "source": "Initial GeoMeta observation",
+            "geographic_scope": "broad",
+            "evidence": {}
         },
-            "dark_road_surface": {
+        "dark_road_surface": {
             "description": "Road contains a relatively high proportion of dark pixels",
             "diagnosticity": "low",
             "geographic_scope": "broad",
-            "source": "GeoMeta visual observation",
+            "evidence": {}
         },
     },
-
-    "infrastructure": {},
-
-    "vegetation": {},
-
-    "architecture": {},
-
-    "signage": {},
-
-    "vehicle": {},
-
-    "coverage": {},
-
-    "terrain": {},
-
-    "language": {},
-
-    "hemisphere": {},
 }
 
 def get_clue(category, clue_name):
     return CLUES.get(category, {}).get(clue_name)
+
+def describe_clue(category, clue_name):
+    clue = get_clue(category, clue_name)
+
+    if clue is None:
+        return None
+
+    return clue["description"]

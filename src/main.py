@@ -4,6 +4,7 @@ import os
 from features.road import analyze_road
 from dataset import load_labels
 from metas import create_meta_result
+from reasoning import create_evidence
 
 def load_image(image_path):
     image = Image.open(image_path)
@@ -44,9 +45,16 @@ def main():
 
         metas = create_meta_result()
         road_data = analyze_road(image)
+        evidence = create_evidence()
+
         metas["road"]["features"] = road_data["features"]
         metas["road"]["observations"] = road_data["observations"]
         metas["road"]["clues"] = road_data["clues"]
+
+        print("\nEVIDENCE")
+        print("--------------------")
+        print(json.dumps(evidence, indent=2))
+
         print("\nMETA DATA")
         print("--------------------")
         print(json.dumps(metas, indent=2))
