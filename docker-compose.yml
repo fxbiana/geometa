@@ -1,0 +1,30 @@
+# Local infrastructure for geometa.
+# Start Postgres only: docker compose up -d db
+#
+# Future services (not required yet):
+#   api:  # Python/FastAPI (or similar) — depends_on: db
+#   web:  # frontend — depends_on: api
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: geometa
+      POSTGRES_PASSWORD: geometa
+      POSTGRES_DB: geometa
+    volumes:
+      - geometa_pgdata:/var/lib/postgresql/data
+      # Applied only on first volume create (empty data dir).
+      - ./db/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U geometa -d geometa"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  geometa_pgdata:

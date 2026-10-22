@@ -11,6 +11,7 @@ import argparse
 import csv
 import hashlib
 import json
+import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -102,6 +103,9 @@ def load_manifest(path: str | Path) -> tuple[ManifestExample, ...]:
                 root = path.parent / root
             root = root.resolve()
             rows = []
+            seen_paths = set()
+            seen_hashes = set()
+            seen_ids = set()
             for entry in payload["entries"]:
                 if not isinstance(entry, dict):
                     raise ValueError("subset manifest entries must be objects")
@@ -109,7 +113,36 @@ def load_manifest(path: str | Path) -> tuple[ManifestExample, ...]:
                 relative_path = _field(row, ("relative_path",))
                 if not relative_path:
                     raise ValueError("subset manifest entries require relative_path")
-                row["image_path"] = str(root / relative_path)
+                candidate = Path(relative_path)
+                if candidate.is_absolute():
+                    raise ValueError("subset manifest relative_path must not be absolute")
+                resolved = (root / candidate).resolve()
+                try:
+                    resolved.relative_to(root)
+                except ValueError as exc:
+                    raise ValueError("subset manifest path escapes dataset.local_root") from exc
+                row["image_path"] = str(resolved)
+                entry_id = _field(row, ("example_id", "id"))
+                declared_hash = _field(row, ("sha256", "content_hash", "input_hash", "hash"))
+                path_key = str(resolved).casefold()
+                if path_key in seen_paths:
+                    raise ValueError("subset manifest image paths must be unique")
+                seen_paths.add(path_key)
+                if entry_id:
+                    if entry_id in seen_ids:
+                        raise ValueError("subset manifest IDs must be unique")
+                    seen_ids.add(entry_id)
+                if declared_hash:
+                    if not re.fullmatch(r"[0-9a-fA-F]{64}", declared_hash):
+                        raise ValueError("subset manifest content hashes must be SHA-256")
+                    if declared_hash.casefold() in seen_hashes:
+                        raise ValueError("subset manifest content hashes must be unique")
+                    seen_hashes.add(declared_hash.casefold())
+                    if not resolved.is_file():
+                        raise ValueError(f"subset manifest image does not exist: {resolved}")
+                    actual_hash = hashlib.sha256(resolved.read_bytes()).hexdigest()
+                    if actual_hash.casefold() != declared_hash.casefold():
+                        raise ValueError(f"subset manifest content hash mismatch for {resolved}")
                 rows.append(row)
         else:
             rows = payload.get("examples", payload) if isinstance(payload, dict) else payload
@@ -120,6 +153,9 @@ def load_manifest(path: str | Path) -> tuple[ManifestExample, ...]:
 
 def _manifest_rows(rows: Iterable[Mapping[str, Any]], manifest_path: Path) -> tuple[ManifestExample, ...]:
     examples = []
+    seen_paths = set()
+    seen_hashes = set()
+    seen_ids = set()
     for index, row in enumerate(rows):
         image_path = _field(row, ("image_path", "path", "filename", "image"))
         label = _field(row, ("country", "label", "target"))
@@ -128,13 +164,30 @@ def _manifest_rows(rows: Iterable[Mapping[str, Any]], manifest_path: Path) -> tu
         resolved = Path(image_path)
         if not resolved.is_absolute():
             resolved = manifest_path.parent / resolved
+        resolved = resolved.resolve()
         example_id = _field(row, ("example_id", "id")) or f"example-{index:05d}"
         content_hash = _field(row, ("sha256", "content_hash", "input_hash", "hash"))
+        if example_id in seen_ids:
+            raise ValueError("manifest example IDs must be unique")
+        seen_ids.add(example_id)
+        path_key = str(resolved).casefold()
+        if path_key in seen_paths:
+            raise ValueError("manifest image paths must be unique")
+        seen_paths.add(path_key)
+        if content_hash:
+            if not re.fullmatch(r"[0-9a-fA-F]{64}", content_hash):
+                raise ValueError(f"manifest row {index + 1} has an invalid SHA-256 hash")
+            if content_hash.casefold() in seen_hashes:
+                raise ValueError("manifest content hashes must be unique")
+            seen_hashes.add(content_hash.casefold())
+            if not resolved.is_file():
+                raise ValueError(f"manifest image does not exist: {resolved}")
+            actual_hash = hashlib.sha256(resolved.read_bytes()).hexdigest()
+            if actual_hash.casefold() != content_hash.casefold():
+                raise ValueError(f"manifest content hash mismatch for {resolved}")
         examples.append(ManifestExample(example_id, str(resolved), label, content_hash))
     if not examples:
         raise ValueError("manifest contains no examples")
-    if len({item.example_id for item in examples}) != len(examples):
-        raise ValueError("manifest example IDs must be unique")
     return tuple(examples)
 
 

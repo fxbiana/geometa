@@ -1,0 +1,1235 @@
+openapi: 3.1.0
+info:
+  title: geometa MVP API
+  version: 0.1.0
+  summary: Interactive learnable metas — product API surface
+  description: |
+    MVP HTTP contract for the geometa product. Aligns with the Python analysis
+    pipeline typed boundaries in `src/contracts.py` (Source → Measurement →
+    Observation → Evidence → CandidateScore) and human review records in
+    `src/annotations.py`.
+
+    Design rules:
+    - Country / ground-truth labels never appear on analysis or annotation write paths.
+    - Observations (visual) stay separate from Evidence (geographic interpretation).
+    - Auth is Bearer JWT (Clerk later); scheme name is `bearerAuth`.
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8000
+    description: Local Python API (planned)
+  - url: https://api.geometa.local
+    description: Deployed API (placeholder)
+
+tags:
+  - name: Learning
+    description: Paths, lessons, practice sessions, and learner progress
+  - name: Content
+    description: Learnable meta catalog
+  - name: Analysis
+    description: Image analysis pipeline (no ground-truth labels)
+  - name: Knowledge
+    description: Versioned geographic claims (read-only in MVP)
+  - name: Annotations
+    description: Human visual review; no country fields on write
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/paths:
+    get:
+      tags: [Learning]
+      operationId: listLearningPaths
+      summary: List learning paths
+      description: Ordered curricula that group lessons for progressive meta learning.
+      responses:
+        "200":
+          description: Learning paths
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningPathList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/lessons/{id}:
+    get:
+      tags: [Learning]
+      operationId: getLesson
+      summary: Get a lesson by id
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Lesson detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/practice/sessions:
+    post:
+      tags: [Learning]
+      operationId: createPracticeSession
+      summary: Start a practice session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePracticeSessionRequest"
+      responses:
+        "201":
+          description: Practice session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeSession"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/practice/sessions/{id}/attempts:
+    post:
+      tags: [Learning]
+      operationId: submitPracticeAttempt
+      summary: Submit an attempt within a practice session
+      description: |
+        Records the learner guess and returns feedback plus an evidence trail
+        suitable for the learning UI (observations and geographic evidence kept distinct).
+        Does not accept ground-truth country labels from the client.
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAttemptRequest"
+      responses:
+        "201":
+          description: Attempt recorded with learning feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeAttemptResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/progress:
+    get:
+      tags: [Learning]
+      operationId: getProgress
+      summary: Get authenticated learner progress
+      responses:
+        "200":
+          description: Progress summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearnerProgress"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/metas:
+    get:
+      tags: [Content]
+      operationId: listMetas
+      summary: List learnable metas
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional meta category filter (e.g. road, vegetation, signage)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque pagination cursor
+      responses:
+        "200":
+          description: Meta catalog page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetaList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/metas/{id}:
+    get:
+      tags: [Content]
+      operationId: getMeta
+      summary: Get a meta by id
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Meta detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meta"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/analyses:
+    post:
+      tags: [Analysis]
+      operationId: createAnalysis
+      summary: Submit an image for analysis
+      description: |
+        Accepts either `multipart/form-data` with an image file, or JSON with a
+        base64-encoded image. Labels / country ground truth must not be sent;
+        the server ignores unknown fields and never uses them in the prediction path.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CreateAnalysisMultipart"
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAnalysisJson"
+      responses:
+        "202":
+          description: Analysis accepted (may still be processing)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/analyses/{id}:
+    get:
+      tags: [Analysis]
+      operationId: getAnalysis
+      summary: Get analysis result by id
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Analysis result (mirrors `AnalysisResult` in contracts)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/claims:
+    get:
+      tags: [Knowledge]
+      operationId: listClaims
+      summary: List geographic claims (read)
+      parameters:
+        - name: geographic_scope
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by geographic scope string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Claim list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/claims/{id}/versions:
+    get:
+      tags: [Knowledge]
+      operationId: listClaimVersions
+      summary: List versions of a claim
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Claim versions (newest first)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimVersionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/annotations/{id}:
+    get:
+      tags: [Annotations]
+      operationId: getAnnotation
+      summary: Get a human visual annotation record
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      responses:
+        "200":
+          description: Annotation record (compatible with `AnnotationRecord`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnotationRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Annotations]
+      operationId: patchAnnotation
+      summary: Update a human visual annotation (no country on write)
+      description: |
+        Partial update for human review. Must not include `country_label` or any
+        country ground-truth field; such fields are rejected.
+      parameters:
+        - $ref: "#/components/parameters/ResourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnotationPatch"
+      responses:
+        "200":
+          description: Updated annotation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnotationRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Record is frozen or otherwise not mutable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk-issued JWT (planned). Send as `Authorization: Bearer <token>`.
+
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+      description: Resource identifier
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    # --- Enums aligned with src/contracts.py ---
+
+    RegionType:
+      type: string
+      enum:
+        - full_image
+        - top_third
+        - middle_third
+        - bottom_third
+        - bounding_box
+
+    ObservationState:
+      type: string
+      enum:
+        - positive
+        - ambiguous
+        - absent
+        - conflicting
+
+    EvidenceDirection:
+      type: string
+      enum:
+        - supporting
+        - weakening
+        - inconclusive
+        - conflicting
+
+    CandidateType:
+      type: string
+      enum:
+        - country
+
+    AnalysisStatus:
+      type: string
+      enum:
+        - processing
+        - completed
+        - insufficient_evidence
+        - failed
+        - timed_out
+
+    Availability:
+      type: string
+      enum:
+        - available
+        - unavailable
+
+    # --- Enums aligned with src/annotations.py ---
+
+    Presence:
+      type: string
+      enum:
+        - present
+        - absent
+        - unknown
+        - not_determinable
+        - conflicting
+
+    Visibility:
+      type: string
+      enum:
+        - clearly_visible
+        - visible
+        - partially_visible
+        - partial
+        - obscured
+        - outside_frame
+        - too_low_quality
+        - contaminated
+        - uncertain
+        - not_visible
+        - unknown
+
+    ImageQuality:
+      type: string
+      enum:
+        - unknown
+        - good
+        - fair
+        - poor
+        - unusable
+
+    InterfaceContamination:
+      type: string
+      enum:
+        - unknown
+        - none
+        - possible
+        - clear
+
+    FeatureFamily:
+      type: string
+      enum:
+        - road
+        - vegetation
+        - signs
+        - built_environment
+        - utilities
+        - terrain
+        - vehicles_capture_context
+
+    ReviewStatus:
+      type: string
+      enum:
+        - needs_review
+        - annotated
+        - reviewed
+        - frozen
+
+    # --- Analysis pipeline (contracts) ---
+
+    ImageRegion:
+      type: object
+      required: [source_id, region_type]
+      properties:
+        source_id:
+          type: string
+        region_type:
+          $ref: "#/components/schemas/RegionType"
+        coordinates:
+          type: array
+          nullable: true
+          minItems: 4
+          maxItems: 4
+          items:
+            type: integer
+          description: Optional bounding box [x0, y0, x1, y1]
+
+    Measurement:
+      type: object
+      required:
+        - id
+        - analysis_id
+        - source_id
+        - region
+        - feature
+        - value
+        - unit
+      properties:
+        id:
+          type: string
+        analysis_id:
+          type: string
+        source_id:
+          type: string
+        region:
+          $ref: "#/components/schemas/ImageRegion"
+        feature:
+          type: string
+        value:
+          type: number
+        unit:
+          type: string
+        detector_version:
+          type: string
+          default: prototype-1
+        schema_version:
+          type: string
+          default: measurement-1
+
+    Observation:
+      type: object
+      description: |
+        Visual observation only — not geographic evidence. Mirrors
+        `contracts.Observation`.
+      required:
+        - id
+        - analysis_id
+        - source_id
+        - region
+        - observation_type
+        - value
+        - confidence
+        - state
+        - supporting_measurement_ids
+      properties:
+        id:
+          type: string
+        analysis_id:
+          type: string
+        source_id:
+          type: string
+        region:
+          $ref: "#/components/schemas/ImageRegion"
+        observation_type:
+          type: string
+        value: {}
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        state:
+          $ref: "#/components/schemas/ObservationState"
+        supporting_measurement_ids:
+          type: array
+          items:
+            type: string
+        detector_version:
+          type: string
+          default: prototype-1
+        schema_version:
+          type: string
+          default: observation-1
+
+    Evidence:
+      type: object
+      description: |
+        Geographic interpretation derived from an observation. Mirrors
+        `contracts.Evidence`. Kept separate from Observation in all responses.
+      required:
+        - id
+        - analysis_id
+        - observation_id
+        - value
+        - confidence
+        - strength
+        - reliability
+        - diagnosticity
+        - geographic_scope
+        - direction
+        - source_id
+        - region
+      properties:
+        id:
+          type: string
+        analysis_id:
+          type: string
+        observation_id:
+          type: string
+        value: {}
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        strength:
+          type: number
+          minimum: 0
+          maximum: 1
+        reliability:
+          type: number
+          minimum: 0
+          maximum: 1
+        diagnosticity:
+          type: number
+          minimum: 0
+          maximum: 1
+        geographic_scope:
+          type: string
+        direction:
+          $ref: "#/components/schemas/EvidenceDirection"
+        source_id:
+          type: string
+        region:
+          $ref: "#/components/schemas/ImageRegion"
+        claim_version_id:
+          type: string
+          nullable: true
+        deduplication_key:
+          type: string
+          nullable: true
+
+    ScoreContribution:
+      type: object
+      required: [evidence_id, candidate_id, value, direction, reason]
+      properties:
+        evidence_id:
+          type: string
+        candidate_id:
+          type: string
+        value:
+          type: number
+        direction:
+          $ref: "#/components/schemas/EvidenceDirection"
+        reason:
+          type: string
+        calculation_version:
+          type: string
+          default: score-1
+
+    CandidateScore:
+      type: object
+      required:
+        - candidate_id
+        - candidate_type
+        - total
+        - rank
+        - eligible
+      properties:
+        candidate_id:
+          type: string
+          description: Candidate identifier (e.g. ISO country code). Not a label input.
+        candidate_type:
+          $ref: "#/components/schemas/CandidateType"
+        total:
+          type: number
+        rank:
+          type: integer
+          minimum: 1
+        eligible:
+          type: boolean
+        contributions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreContribution"
+        inclusion_reason:
+          type: string
+          default: ""
+
+    AnalysisResult:
+      type: object
+      description: Mirrors `contracts.AnalysisResult`.
+      required:
+        - analysis_id
+        - source_id
+        - source_hash
+        - status
+      properties:
+        analysis_id:
+          type: string
+        source_id:
+          type: string
+        source_hash:
+          type: string
+          description: SHA-256 hex digest of source bytes
+          pattern: "^[0-9a-fA-F]{64}$"
+        status:
+          $ref: "#/components/schemas/AnalysisStatus"
+        measurements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Measurement"
+        observations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Observation"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/CandidateScore"
+        error:
+          type: string
+          nullable: true
+
+    CreateAnalysisMultipart:
+      type: object
+      required: [image]
+      properties:
+        image:
+          type: string
+          format: binary
+          description: Source image bytes (`imported_image`)
+        name:
+          type: string
+          default: source
+          description: Optional display / file name
+
+    CreateAnalysisJson:
+      type: object
+      required: [image_base64]
+      properties:
+        image_base64:
+          type: string
+          description: Base64-encoded image bytes (no data-URI prefix required)
+        name:
+          type: string
+          default: source
+        media_type:
+          type: string
+          description: Optional MIME type hint (e.g. image/jpeg)
+          examples:
+            - image/jpeg
+            - image/png
+
+    # --- Learning ---
+
+    LearningPathSummary:
+      type: object
+      required: [id, title, lesson_ids]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          default: ""
+        lesson_ids:
+          type: array
+          items:
+            type: string
+        meta_ids:
+          type: array
+          items:
+            type: string
+          description: Metas emphasized by this path
+
+    LearningPathList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningPathSummary"
+
+    Lesson:
+      type: object
+      required: [id, title, path_id, meta_ids]
+      properties:
+        id:
+          type: string
+        path_id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+          default: ""
+        meta_ids:
+          type: array
+          items:
+            type: string
+        practice_prompt:
+          type: string
+          default: ""
+        estimated_minutes:
+          type: integer
+          minimum: 1
+
+    CreatePracticeSessionRequest:
+      type: object
+      required: [lesson_id]
+      properties:
+        lesson_id:
+          type: string
+        meta_id:
+          type: string
+          description: Optional focus meta within the lesson
+
+    PracticeSession:
+      type: object
+      required: [id, lesson_id, status, created_at]
+      properties:
+        id:
+          type: string
+        lesson_id:
+          type: string
+        meta_id:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, completed]
+        created_at:
+          type: string
+          format: date-time
+        analysis_id:
+          type: string
+          nullable: true
+          description: Analysis backing the current practice item, when applicable
+
+    SubmitAttemptRequest:
+      type: object
+      required: [guess]
+      description: Learner attempt only — no ground-truth country fields.
+      properties:
+        guess:
+          type: object
+          required: [candidate_id]
+          properties:
+            candidate_id:
+              type: string
+              description: Learner-selected candidate (e.g. ISO country code)
+            candidate_type:
+              $ref: "#/components/schemas/CandidateType"
+            rationale:
+              type: string
+              default: ""
+        selected_observation_ids:
+          type: array
+          items:
+            type: string
+          description: Observations the learner highlighted in the UI
+        selected_evidence_ids:
+          type: array
+          items:
+            type: string
+          description: Evidence items the learner used to justify the guess
+
+    PracticeAttemptResult:
+      type: object
+      description: |
+        Attempt outcome for the learning UI. Includes a distinct evidence trail
+        (observations vs evidence) so explanations stay faithful to the pipeline.
+      required:
+        - attempt_id
+        - session_id
+        - guess
+        - feedback
+        - evidence_trail
+      properties:
+        attempt_id:
+          type: string
+        session_id:
+          type: string
+        analysis_id:
+          type: string
+          nullable: true
+        guess:
+          type: object
+          required: [candidate_id]
+          properties:
+            candidate_id:
+              type: string
+            candidate_type:
+              $ref: "#/components/schemas/CandidateType"
+            rationale:
+              type: string
+              default: ""
+        feedback:
+          type: object
+          required: [outcome, summary]
+          properties:
+            outcome:
+              type: string
+              enum:
+                - correct
+                - incorrect
+                - partial
+                - unscored
+            summary:
+              type: string
+            top_candidates:
+              type: array
+              items:
+                $ref: "#/components/schemas/CandidateScore"
+        evidence_trail:
+          $ref: "#/components/schemas/EvidenceTrail"
+
+    EvidenceTrail:
+      type: object
+      description: |
+        Learning-facing trail that preserves Observation vs Evidence separation.
+      required: [observations, evidence]
+      properties:
+        observations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Observation"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+        contributions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreContribution"
+          description: Optional score contributions linking evidence to candidates
+
+    LearnerProgress:
+      type: object
+      required: [user_id, paths]
+      properties:
+        user_id:
+          type: string
+        paths:
+          type: array
+          items:
+            $ref: "#/components/schemas/PathProgress"
+        metas_practiced:
+          type: integer
+          minimum: 0
+          default: 0
+        attempts_total:
+          type: integer
+          minimum: 0
+          default: 0
+
+    PathProgress:
+      type: object
+      required: [path_id, completed_lesson_ids, status]
+      properties:
+        path_id:
+          type: string
+        completed_lesson_ids:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [not_started, in_progress, completed]
+        last_activity_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    # --- Content ---
+
+    Meta:
+      type: object
+      required: [id, category, feature, title]
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          description: Category key (aligned with meta catalog / META_CATEGORIES)
+        feature:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+          default: ""
+        related_claim_ids:
+          type: array
+          items:
+            type: string
+        difficulty:
+          type: string
+          enum: [intro, intermediate, advanced]
+          default: intro
+
+    MetaList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Meta"
+        next_cursor:
+          type: string
+          nullable: true
+
+    # --- Knowledge (claims, read) ---
+
+    Claim:
+      type: object
+      required: [id, title, current_version_id]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        geographic_scope:
+          type: string
+          default: ""
+        current_version_id:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    ClaimList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Claim"
+        next_cursor:
+          type: string
+          nullable: true
+
+    ClaimVersion:
+      type: object
+      required: [id, claim_id, version, statement, created_at]
+      properties:
+        id:
+          type: string
+          description: Referenced by Evidence.claim_version_id when linked
+        claim_id:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        statement:
+          type: string
+        geographic_scope:
+          type: string
+          default: ""
+        created_at:
+          type: string
+          format: date-time
+        supersedes_version_id:
+          type: string
+          nullable: true
+
+    ClaimVersionList:
+      type: object
+      required: [claim_id, items]
+      properties:
+        claim_id:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClaimVersion"
+
+    # --- Annotations (human review; no country on write) ---
+
+    Interpretation:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          nullable: true
+        rationale:
+          type: string
+          default: ""
+
+    VisualAnnotation:
+      type: object
+      required: [feature_family, feature, presence, visibility]
+      properties:
+        feature_family:
+          $ref: "#/components/schemas/FeatureFamily"
+        feature:
+          type: string
+        presence:
+          $ref: "#/components/schemas/Presence"
+        visibility:
+          $ref: "#/components/schemas/Visibility"
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          nullable: true
+        interpretations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Interpretation"
+        region:
+          type: string
+          nullable: true
+        note:
+          type: string
+          default: ""
+
+    AnnotatorMetadata:
+      type: object
+      required: [annotator_id, annotated_at]
+      properties:
+        annotator_id:
+          type: string
+        annotated_at:
+          type: string
+          description: ISO-8601 timestamp
+        tool_version:
+          type: string
+          default: m1-fe2-manual-1
+
+    AnnotationRecord:
+      type: object
+      description: |
+        Compatible with `annotations.AnnotationRecord`. Country labels are
+        evaluation metadata and are never part of this schema.
+      required:
+        - annotation_id
+        - image_id
+        - image_path
+        - content_hash
+        - image_quality
+        - interface_contamination
+        - review_status
+      properties:
+        annotation_id:
+          type: string
+        image_id:
+          type: string
+        image_path:
+          type: string
+        content_hash:
+          type: string
+          pattern: "^[0-9a-fA-F]{64}$"
+        annotator:
+          oneOf:
+            - $ref: "#/components/schemas/AnnotatorMetadata"
+            - type: "null"
+        image_quality:
+          $ref: "#/components/schemas/ImageQuality"
+        interface_contamination:
+          $ref: "#/components/schemas/InterfaceContamination"
+        visual_annotations:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisualAnnotation"
+        review_status:
+          $ref: "#/components/schemas/ReviewStatus"
+        schema_version:
+          type: string
+          default: m1-fe2-3
+
+    AnnotationPatch:
+      type: object
+      description: |
+        Writable fields for human review. Explicitly excludes country / label
+        fields. Including `country_label` must yield 400.
+      additionalProperties: false
+      properties:
+        image_quality:
+          $ref: "#/components/schemas/ImageQuality"
+        interface_contamination:
+          $ref: "#/components/schemas/InterfaceContamination"
+        visual_annotations:
+          type: array
+          items:
+            $ref: "#/components/schemas/VisualAnnotation"
+        annotator:
+          $ref: "#/components/schemas/AnnotatorMetadata"
+        review_status:
+          $ref: "#/components/schemas/ReviewStatus"
+          description: Client may set needs_review | annotated | reviewed; frozen is server-controlled
+        note:
+          type: string
+          description: Optional free-form reviewer note (not a country label)

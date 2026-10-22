@@ -219,3 +219,12 @@ __marimo__/
 
 # Local external exploratory dataset
 images/compressed_dataset/
+
+# Next.js (web/)
+web/node_modules/
+web/.next/
+web/out/
+web/.env
+web/.env*.local
+node_modules/
+.next/

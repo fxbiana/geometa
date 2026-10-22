@@ -4,7 +4,7 @@
 **Project:** GeoMeta
 **Status:** Initial decision record
 **Version:** 0.1
-**Last updated:** October 16, 2026
+**Last updated:** October 20, 2026
 
 ---
 
@@ -357,14 +357,31 @@ acquisition mechanism.
 
 These items are intentionally not silently resolved by implementation.
 
+### D-017 - PostgreSQL for the learning/product store
+
+**Status:** Accepted
+**Date:** October 20, 2026
+**Decision:** Use PostgreSQL as the local system of record for study sessions,
+analyses, evaluation records, and learning/product tables (`db/migrations`).
+
+**Rationale:** Postgres supports the composite foreign keys, partial unique
+indexes, JSONB manifests, and triggers required by `04_DATA_MODEL` for
+same-round current-record pointers and verified actual-location enforcement.
+
+**Consequences:**
+
+- Schema lives under `db/migrations` (see `db/README.md`).
+- O-001 remains open only for migration tooling and production ops details.
+
+**References:** `03_SYSTEM_ARCHITECTURE`, `04_DATA_MODEL`, `db/README.md`
+
 ### O-001 - Database and migration tooling
 
 **Status:** Open
-The database engine, migration tool, and production persistence strategy remain
-implementation decisions. The selected relational store must support the
-documented foreign-key, uniqueness, transaction, and current-pointer rules.
-SQLite is a suitable first-slice option if foreign keys are explicitly enabled
-and conditional verification rules use triggers or repository transactions.
+PostgreSQL is selected for the learning/product store (see D-017). Migration
+tooling and production persistence ops remain open. The store must continue to
+support the documented foreign-key, uniqueness, transaction, and current-pointer
+rules.
 
 ### O-002 - Capture and interface technology
 

@@ -1,4 +1,6 @@
 from PIL import Image
+import hashlib
+import pytest
 
 from src.evaluation_harness import (
     ManifestExample,
@@ -51,15 +53,40 @@ def test_loads_approved_subset_manifest_shape(tmp_path):
     image_path = image_root / "sample.png"
     _write_image(image_path, (100, 100, 100))
     manifest = tmp_path / "approved-external-dataset-subset-manifest.json"
+    image_hash = hashlib.sha256(image_path.read_bytes()).hexdigest()
     manifest.write_text(
         '{"dataset":{"local_root":"historical-images"},'
         '"entries":[{"id":"known-1","relative_path":"sample.png",'
-        '"country":"Exampleland","sha256":"abc123"}]}',
+        '"country":"Exampleland","sha256":"' + image_hash + '"}]}',
         encoding="utf-8",
     )
 
     examples = load_manifest(manifest)
 
     assert examples == (
-        ManifestExample("known-1", str(image_path), "Exampleland", "abc123"),
+        ManifestExample("known-1", str(image_path), "Exampleland", image_hash),
     )
+
+
+def test_subset_manifest_rejects_hash_mismatch_and_path_escape(tmp_path):
+    image_root = tmp_path / "historical-images"
+    image_root.mkdir()
+    image_path = image_root / "sample.png"
+    _write_image(image_path, (100, 100, 100))
+    manifest = tmp_path / "subset.json"
+    manifest.write_text(
+        '{"dataset":{"local_root":"historical-images"},"entries":['
+        '{"id":"one","relative_path":"sample.png","country":"A",'
+        '"sha256":"' + ("0" * 64) + '"}]}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="hash mismatch"):
+        load_manifest(manifest)
+    manifest.write_text(
+        '{"dataset":{"local_root":"historical-images"},"entries":['
+        '{"id":"one","relative_path":"..\\\\outside.png","country":"A",'
+        '"sha256":"' + ("0" * 64) + '"}]}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="escapes"):
+        load_manifest(manifest)

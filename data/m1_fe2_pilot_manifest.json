@@ -1,0 +1,917 @@
+{
+  "dataset": {
+    "local_root": "..\\images\\compressed_dataset",
+    "name": "GeoLocation - Geoguessr Images (50K)",
+    "role": "external exploratory corpus; not official benchmark"
+  },
+  "entries": [
+    {
+      "content_hash": "14ac4c2cc802b1307e74f5d6e47e3e17ea3bee19679105505983b1a3bfc910fe",
+      "country": "Australia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-001",
+      "relative_path": "Australia\\canvas_1629435408.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "ce6b53bdaab8bc68155cb064d51bd6052b094e49d975bcbfdc08332afa3838ce",
+      "country": "Australia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-002",
+      "relative_path": "Australia\\canvas_1629867601.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "b0d2e0b821931059f939329ca08c269f9d2163dc227dd4df7b773ab8224a51ae",
+      "country": "Australia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-003",
+      "relative_path": "Australia\\canvas_1629763357.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "e3d670db125af740e786cd860636143008c2667417be54ba0eff39ea208413e6",
+      "country": "Brazil",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-004",
+      "relative_path": "Brazil\\canvas_1630219020.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "4e439d93688af7567618cf2fb20962d65a1eee24b8ba5969fd7e448224975939",
+      "country": "Brazil",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-005",
+      "relative_path": "Brazil\\canvas_1629860367.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "e4b4b784828d10ed80fd11658489be822ec2f956ee99eda667aaa5b38dc63df8",
+      "country": "Brazil",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-006",
+      "relative_path": "Brazil\\canvas_1630085206.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "ee12963aa715dd30e68eecb2183fa47db89969b1b2411e2e86ac7bf829e8bdbc",
+      "country": "Canada",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-007",
+      "relative_path": "Canada\\canvas_1629691724.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "749693fc90c6cd6b0566d74a7e2a66cc64115cd186366a677d52c0d7b1fbdb2b",
+      "country": "Canada",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-008",
+      "relative_path": "Canada\\canvas_1629848408.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "cffae5c663d323001f6f863fb16139c2de3071e8da7622e6d35dd9fa5d4ba780",
+      "country": "Canada",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-009",
+      "relative_path": "Canada\\canvas_1630065214.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "665a1276c0f0e5b42c855098a8886a49691e6647bac0abf4551f3f8f5fa38d71",
+      "country": "Eswatini",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-010",
+      "relative_path": "Eswatini\\canvas_1629403088.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "ddffad20a4276be4b0788468eac55cdaf7c5e1271a0aa1b46a5ee62b22ca0026",
+      "country": "Eswatini",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-011",
+      "relative_path": "Eswatini\\canvas_1629790002.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "707ff0e0e54c66cf7a1cd322b8a7bd41aacf7a8ef2f2e55a02a7d140162aa845",
+      "country": "Eswatini",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-012",
+      "relative_path": "Eswatini\\canvas_1629968280.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "6630565059d9e868ee7481d6ada0542232192ebbf29bf846fc44a7396fbaa01a",
+      "country": "Finland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-013",
+      "relative_path": "Finland\\canvas_1629720491.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "0b43350ae3cd2a551a693020131e5b9e5f9a421aa90f14e5edc94cb1601ab8cf",
+      "country": "Finland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-014",
+      "relative_path": "Finland\\canvas_1629777803.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "bc72c72e6f3490e8fd845e03aea31d24844430c01a7c21952bfbe60508aafadc",
+      "country": "Finland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-015",
+      "relative_path": "Finland\\canvas_1630103089.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "3e10076f70e87ba09643e8c0677c506fb2858615e5fde9045d33559da5e33d43",
+      "country": "France",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-016",
+      "relative_path": "France\\canvas_1629774838.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "708e1552b9b7157a93e3304ec121499f94198dbda6598eb818368cd04dc02127",
+      "country": "France",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-017",
+      "relative_path": "France\\canvas_1630103753.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "0cce55e6d28107ddf5fd0ef8be7d22527e92b74fd379ddad6d8fd075062f5b70",
+      "country": "France",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-018",
+      "relative_path": "France\\canvas_1630026020.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "2fe7875e88edf6b089620e8692bc38cd5cd1cd56f219fe575d18c69c81e8a532",
+      "country": "Guatemala",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-019",
+      "relative_path": "Guatemala\\canvas_1629444421.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "992b037cceeca2e854940510c8abe58bda8db597dea66da2de5a05df15a557ba",
+      "country": "Guatemala",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-020",
+      "relative_path": "Guatemala\\canvas_1629782238.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "b0478e6901411706141f48626fb8ed1cd22518d927d7a83e473c90b1c5056117",
+      "country": "Guatemala",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-021",
+      "relative_path": "Guatemala\\canvas_1629325148.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "db50ec20f43e3e74d9fa1542d5e5b5eecddfc536a7aa10a3f6257ed1a6ec5d20",
+      "country": "Hong Kong",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-022",
+      "relative_path": "Hong Kong\\canvas_1629276333.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "467b50809f69bda9c1876a90360a321b2869179a84bcc8d66ffef8653f4a2f8f",
+      "country": "Hong Kong",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-023",
+      "relative_path": "Hong Kong\\canvas_1630067871.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "b9116d38322e2c741147bfa316c3815f79ddd32fa569f04158e59e67385d9466",
+      "country": "Hong Kong",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-024",
+      "relative_path": "Hong Kong\\canvas_1630335825.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "b6b00d74301758d7fb6d6cb2b11f696877868ae7aa859e7c8a82e128bcf0a4fd",
+      "country": "Iceland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-025",
+      "relative_path": "Iceland\\canvas_1629404171.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "ac892ae5b7340cc41d523c2866f57e468b39b4f1d6ad127f23e68a08c3dddf9f",
+      "country": "Iceland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-026",
+      "relative_path": "Iceland\\canvas_1629275282.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "778893345ca83c969a28482bd8f7c3e21117ed571e188df00492d3c154995c20",
+      "country": "Iceland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-027",
+      "relative_path": "Iceland\\canvas_1629503620.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "6ae22543ac08ae48b5f8fdafc66d359421e87e2673df8d78ceccfba52609449c",
+      "country": "Italy",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-028",
+      "relative_path": "Italy\\canvas_1630090270.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "30d01e10194de63fe218ee7490ef4eae06b211681b85daf056d49f4ad43e9d3d",
+      "country": "Italy",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-029",
+      "relative_path": "Italy\\canvas_1629399400.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "bfdda8108c2d5ea4d695bba82ef998414a4383d55f4aefc8b62c5f7aebcd9c1b",
+      "country": "Italy",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-030",
+      "relative_path": "Italy\\canvas_1630010042.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "d9caa01fbbb24a7f8925f17efa4b1d7e9c5e666b7d392d894b81300aaf797eb6",
+      "country": "Japan",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-031",
+      "relative_path": "Japan\\canvas_1629503013.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "371aed17580e8d84f006dcb15dd3e02198a6f62f376e98c2c40861ed548f8fab",
+      "country": "Japan",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-032",
+      "relative_path": "Japan\\canvas_1629831627.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "19f1b8ec5dfccf225ecf7905127ab956d45e6368faf1512978c1e5159af48524",
+      "country": "Japan",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-033",
+      "relative_path": "Japan\\canvas_1630139561.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "a79cf7118812f1d8e7aed4c405df608289751fb93f745dd36df30eefe54b7b23",
+      "country": "Japan",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-034",
+      "relative_path": "Japan\\canvas_1629444025.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "c5d9f353bfddc145dc3f2b0b80b2532b5aad38e2d6c4ea1ca1ed837fc8b12df7",
+      "country": "Kyrgyzstan",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-035",
+      "relative_path": "Kyrgyzstan\\canvas_1629969270.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "e30716a865f58384857fcd742b0526a0764e2a06f301ffe672522ff759da37ce",
+      "country": "Kyrgyzstan",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-036",
+      "relative_path": "Kyrgyzstan\\canvas_1630018491.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "1ae3b071620d5830f2eff362d43f8efdb242df65ee8e2955ec3d7ce28c7becb9",
+      "country": "Kyrgyzstan",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-037",
+      "relative_path": "Kyrgyzstan\\canvas_1629581917.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "e38466a8abd671335c28be3cf075b667cb2290a5396a6ffc351c9f10e7e6869b",
+      "country": "Laos",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-038",
+      "relative_path": "Laos\\canvas_1629825281.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "cdf39ea7f689e353886675a43d1ca2e687a1e547bed50d60a5083dec33a11e34",
+      "country": "Laos",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-039",
+      "relative_path": "Laos\\canvas_1630002899.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "7197826636254e99647c1b66928689f513c2db4ad2c1902c83b3bdcce6fca6d7",
+      "country": "Laos",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-040",
+      "relative_path": "Laos\\canvas_1630026858.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "4f0dc23539bbfdf36cac87830a691c8313b606a4bf563c0f053f3bcc3ec6200f",
+      "country": "Lesotho",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-041",
+      "relative_path": "Lesotho\\canvas_1630222708.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "cd6c9e0d8dc556aecc9fbb570eab7d045028971124c37a1e20706667be027f45",
+      "country": "Lesotho",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-042",
+      "relative_path": "Lesotho\\canvas_1630020891.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "1d1c150c014d031d7b262190cf30ab25f5f55b78d2550e069d5010b8017cbf98",
+      "country": "Lesotho",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-043",
+      "relative_path": "Lesotho\\canvas_1629781826.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "8be629f12069dd4a19de53fafa796595f2616a7654f9286a53538aac6970522c",
+      "country": "Malta",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-044",
+      "relative_path": "Malta\\canvas_1629547463.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "d24128ea0a4a6dbd55b124f857b5a77d5385cc0a7c6409a46ded00c281656f37",
+      "country": "Malta",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-045",
+      "relative_path": "Malta\\canvas_1629838955.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "c599b3bdd476efafbaaa44913df46bab553c2dc69007b8bed688c2a19c83da3c",
+      "country": "Malta",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-046",
+      "relative_path": "Malta\\canvas_1629315354.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "17f4cefdad929e40db57e23a422579358158824ea0c484d7bf3fef5f190deba8",
+      "country": "Mexico",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-047",
+      "relative_path": "Mexico\\canvas_1629417430.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "f49af5594673a64d8b762f0c4d6205ec655c1147c9536abf73f2ba5e623e0cf7",
+      "country": "Mexico",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-048",
+      "relative_path": "Mexico\\canvas_1630077680.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "b716fb9bf71faeb3d3bcb79579ab4ac46ef29f79a448931e9ed16d773a7ef33f",
+      "country": "Mexico",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-049",
+      "relative_path": "Mexico\\canvas_1629772580.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "979c851d947757f8146375dd002935d4739c62a856949163ff8c542dafd638cf",
+      "country": "Mongolia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-050",
+      "relative_path": "Mongolia\\canvas_1629770642.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "8894eaf0a49c83a455ada206a9c28ac1fb3ca30622f54972e4ef1e6ed83b6d26",
+      "country": "Mongolia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-051",
+      "relative_path": "Mongolia\\canvas_1629838583.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "00a90748f24f9b9b5cdb6e7dab2fa561c1184aa701b25cf0ffe2799836db340d",
+      "country": "Mongolia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-052",
+      "relative_path": "Mongolia\\canvas_1630087005.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "8f8b35222923de09ae01d216b3a749b75c911d5497e3ebe159cce98975901fee",
+      "country": "Poland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-053",
+      "relative_path": "Poland\\canvas_1630290876.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "19bc8cf4831f8a526b57174f78ce8c870aff3c94ef16997606818a9f0c410ba5",
+      "country": "Poland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-054",
+      "relative_path": "Poland\\canvas_1629513694.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "4e84fec97923e9d564292351fe703dbd243b0bdf33aa3e62a9db4ed53579b01d",
+      "country": "Poland",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-055",
+      "relative_path": "Poland\\canvas_1629668498.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "3251d04bac4c6b99744fb73c2887861850422c31d41ee0f36792a97ce317c59d",
+      "country": "Russia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-056",
+      "relative_path": "Russia\\canvas_1629277461.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "7e66b5f572a6d46cae832b04c6a1904b935aa650292ab162129f14c8c06e0a35",
+      "country": "Russia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-057",
+      "relative_path": "Russia\\canvas_1630217912.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "f7ee97cf1408ddfdbc6b03f8644f7a1112ee843d4f1a7f6e98e426cf83cb416a",
+      "country": "Russia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-058",
+      "relative_path": "Russia\\canvas_1630110539.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "84670a5293a3b0d0cb54bd5205930e225b2c2c81cffdd1d5f6162c4c0529afc6",
+      "country": "Senegal",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-059",
+      "relative_path": "Senegal\\canvas_1629315697.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "292f86b0c754d09f8eca5c77b4b17fc28e968aba2e08f8d3e852a3a48847325a",
+      "country": "Senegal",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-060",
+      "relative_path": "Senegal\\canvas_1629758841.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "c5f883e0c2a0895155de1928ade0bea7fcd5d60db7ae8ae30ef2a7ddbfabffaa",
+      "country": "Senegal",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-061",
+      "relative_path": "Senegal\\canvas_1629585152.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "ae0e4cf9310f9082819a21ee08de8f1030d4ea160be6f79b882de0a5615e22ff",
+      "country": "Serbia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-062",
+      "relative_path": "Serbia\\canvas_1629899269.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "fd7094194c68c9d016a1d1d91c59e3409ba1daff9dece06466754c2c07655dd7",
+      "country": "Serbia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-063",
+      "relative_path": "Serbia\\canvas_1629937193.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "de3862cff868bcaf2b1b21da9ff2bc74d7af35dfcb0643f02319ea1697197955",
+      "country": "Serbia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-064",
+      "relative_path": "Serbia\\canvas_1629906835.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "5c86cd64814179aebe51568d52edb8cb3dca4cd91004884d1afdcc8dda7879f2",
+      "country": "Slovenia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-065",
+      "relative_path": "Slovenia\\canvas_1629447553.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "8d9ebddfc0c4c7dd9a8696a32838fae54b713832aa60be1292536f7e45b8eecb",
+      "country": "Slovenia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-066",
+      "relative_path": "Slovenia\\canvas_1629330544.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "624192ea379371c83798ea5ed6f7026416428ac5781cd13858da2b20522a7fdc",
+      "country": "Slovenia",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-067",
+      "relative_path": "Slovenia\\canvas_1629691172.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "ecc2ab10a75244eb29c4de7037f8811a9f69131f0a054b4bcc0cd6ae04d2ad61",
+      "country": "South Africa",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-068",
+      "relative_path": "South Africa\\canvas_1629740696.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "357c08353b77b8b44648837cc0f88fa735539bcf333e8b73d251f51b9dbc008f",
+      "country": "South Africa",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-069",
+      "relative_path": "South Africa\\canvas_1629678362.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "bf09efbf7a2de3399f5fce7b90260cd604f728384f095a49500f05ede91a2144",
+      "country": "South Africa",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-070",
+      "relative_path": "South Africa\\canvas_1630096188.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "947aec199a174672d04381793c4273acd2ff5268dd290d9c1aadc72d04a371fd",
+      "country": "Spain",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-071",
+      "relative_path": "Spain\\canvas_1629258803.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "143e4b4627a811a9cf7cdbea4ca6928bd975b8d130e957aff085b8915e92c276",
+      "country": "Spain",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-072",
+      "relative_path": "Spain\\canvas_1629849735.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "fd02f30f7d81b7a6c946ff64cb32be664433d86933a31ae29f6296f7988d7912",
+      "country": "Spain",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-073",
+      "relative_path": "Spain\\canvas_1629941637.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "08ac9b33149106d680f6ba2135c4c4eb4392c35e3bdb600a69c8ea82227e97d6",
+      "country": "Thailand",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-074",
+      "relative_path": "Thailand\\canvas_1630088654.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "80d4b20b97b18ce264580e9515dd2d398f08ad69f3f575f71278a32bc6d61959",
+      "country": "Thailand",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-075",
+      "relative_path": "Thailand\\canvas_1630277086.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "5a42ca5b399fd1b1fdcae25df5fda8e2a61e8e5bf1714ae920c00b00f4898005",
+      "country": "Thailand",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-076",
+      "relative_path": "Thailand\\canvas_1629329316.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "5f79fd00614f939e1bb58ed6bbf42b81c96fd86bd8abfbb9d4fdb8159433fbe2",
+      "country": "Uganda",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-077",
+      "relative_path": "Uganda\\canvas_1629720219.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "2a902d82cd0edebf860400811bd51812f484b4338a2e023c97a191ac5fe2c772",
+      "country": "Uganda",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-078",
+      "relative_path": "Uganda\\canvas_1630027108.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "8bda479daad889f9f0f47178a71e4be52e767654b47e8946161e26bdbaa4a9c2",
+      "country": "Uganda",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-079",
+      "relative_path": "Uganda\\canvas_1629762082.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "7ab1061f9209e11162e26f756cc7f7cb6b4712f7b6454e80f05083e73178a047",
+      "country": "United Arab Emirates",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-080",
+      "relative_path": "United Arab Emirates\\canvas_1629302392.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "1814fca2b55cf8f626cf824526a07c10093620b6545005d7e313a6e2efb785bf",
+      "country": "United Arab Emirates",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-081",
+      "relative_path": "United Arab Emirates\\canvas_1629300921.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "314973b51e9a9638e245b0010a7cc66fce5b6720f21a3915f822f5bf7fe219cd",
+      "country": "United Arab Emirates",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-082",
+      "relative_path": "United Arab Emirates\\canvas_1629762758.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "945fdc401d6d64b47e94b4fa083ed4274968acde7cd9132d2bdf097bfa69d675",
+      "country": "United Kingdom",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-083",
+      "relative_path": "United Kingdom\\canvas_1630066102.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "4accea8e79667f7737397e36a05361d47b64a08977d8985d976625c98602eacc",
+      "country": "United Kingdom",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-084",
+      "relative_path": "United Kingdom\\canvas_1629521047.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "9ead837a5fca85a80546050d975826ac6132a5230eb56647151f858eb3742e21",
+      "country": "United Kingdom",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-085",
+      "relative_path": "United Kingdom\\canvas_1629709471.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "7529002bdd1c5fd02a41be8138a6712452db35def5215b57b1fbf80ea4c418d3",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-086",
+      "relative_path": "United States\\canvas_1630091646.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "360a8b21e9d9302b019a204650e51ce14554046ae673627ee33af5659f149b61",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-087",
+      "relative_path": "United States\\canvas_1629283340.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "d54e57c0259487291e0afacbbfa8c5b6197ab58c91694e01783ff345ce3eed8b",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-088",
+      "relative_path": "United States\\canvas_1629928036.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "ede3346808f7ea338f23d43fad34dfbc1f6a036133ffa984ffa63a0f35d1ab4c",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-089",
+      "relative_path": "United States\\canvas_1629268135.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "8df2bf66c9d24c56b0f2769db55072f13bdde80912f6cfe3454c2bfee754e61b",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-090",
+      "relative_path": "United States\\canvas_1629348837.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "2059129d444843befef47da3e3454b1a3c81382f25708bf42769516f5cdf4258",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-091",
+      "relative_path": "United States\\canvas_1629709778.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "22ad7a53fa8b9143860e8c8340d9dfc77de3e25be2be6347e9dcf143afad8207",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-092",
+      "relative_path": "United States\\canvas_1630064252.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "b9b662a606ed431e89cc5445b0993b2daa91e45df60dfa5746fb0433181f2544",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-093",
+      "relative_path": "United States\\canvas_1629442182.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "739fa53088e601a30a6e7422ff971e1a8a025ce77fdd06bf838f74d792df8498",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-094",
+      "relative_path": "United States\\canvas_1630210978.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "206b6557232fa989202c9655f15410bb9298aff6c3c07b36eb385bf6982277d0",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-095",
+      "relative_path": "United States\\canvas_1630082067.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "a7d1abd59e603207d35fad232ac9b21c3d75b621f13498122de487bb0c4e23d0",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-096",
+      "relative_path": "United States\\canvas_1629935419.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "d8ee55b5817b90da32f0ae3b0c78f7845596d7ffb9436fed146a4be92a6e1cd4",
+      "country": "United States",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-097",
+      "relative_path": "United States\\canvas_1629739131.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "2f313125e146f68e62f0289eaf34819a104568c418907af6dbcf2de8df6fffb8",
+      "country": "Uruguay",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-098",
+      "relative_path": "Uruguay\\canvas_1629856479.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "27557b8a84761f3df670ba41b3a21e9beabb360626183874c64f1471e51de09c",
+      "country": "Uruguay",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-099",
+      "relative_path": "Uruguay\\canvas_1629350591.jpg",
+      "width": 1536
+    },
+    {
+      "content_hash": "312232b7f647ec4e163245ff613330f5dd67765f4afe41df941d9e5cb383ff8b",
+      "country": "Uruguay",
+      "format": "JPEG",
+      "height": 662,
+      "id": "pilot-100",
+      "relative_path": "Uruguay\\canvas_1630223566.jpg",
+      "width": 1536
+    }
+  ],
+  "manifest_schema_version": "m1-fe2-pilot-1",
+  "selection_policy": {
+    "images_copied": false,
+    "ordering": "label ascending, then approved selection_key ascending",
+    "per_label_floor": 3,
+    "size": 100,
+    "source_manifest": "C:\\Users\\fabia\\.copilot\\session-state\\e24c80df-f596-415c-bff4-30b781568c1a\\files\\external-dataset-subset-manifest.json"
+  }
+}
