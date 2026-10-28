@@ -3,3 +3,6 @@ fastapi
 uvicorn
 pydantic
 python-multipart
+# Optional Wave-2 object detector (YOLO-World via ultralytics).
+# Missing install/weights → detect_objects returns empty observations.
+ultralytics
