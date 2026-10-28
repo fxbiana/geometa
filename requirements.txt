@@ -3,3 +3,5 @@ fastapi
 uvicorn
 pydantic
 python-multipart
+# Optional OCR for script writing-system detection (CI uses NullOcrBackend / mocks).
+paddleocr>=2.7,<3
