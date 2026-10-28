@@ -1,0 +1,5 @@
+{
+  "id": "gray_road",
+  "expected_observations": ["road_region_predominantly_gray"],
+  "expected_countries": []
+}

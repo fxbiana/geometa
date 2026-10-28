@@ -1,0 +1,55 @@
+{
+  "pack_version": "wave2-eval-v1",
+  "description": "Wave 2 evaluation stills with expected object/script observations and country sets. Labels are evaluation-only; prediction must not read them.",
+  "stills_dir": "stills",
+  "examples": [
+    {
+      "id": "yellow_road",
+      "image": "stills/yellow_road.png",
+      "family": "road",
+      "expected_observations": ["possible_yellow_marking"],
+      "expected_countries": ["US", "CA"],
+      "notes": "Existing road detector + provisional yellow claim; integration-capable today."
+    },
+    {
+      "id": "gray_road",
+      "image": "stills/gray_road.png",
+      "family": "road",
+      "expected_observations": ["road_region_predominantly_gray"],
+      "expected_countries": [],
+      "notes": "Gray observation exists but approved claim has empty supports — no country."
+    },
+    {
+      "id": "bollard_stub",
+      "image": "stills/bollard_stub.png",
+      "family": "objects",
+      "expected_observations": ["bollard_present"],
+      "expected_countries": ["IE"],
+      "notes": "Object-family fixture; unit eval via injected observations/claims until objects detector lands."
+    },
+    {
+      "id": "utility_pole_stub",
+      "image": "stills/utility_pole_stub.png",
+      "family": "objects",
+      "expected_observations": ["utility_pole_present"],
+      "expected_countries": ["JP"],
+      "notes": "Object-family fixture for precision metric."
+    },
+    {
+      "id": "cjk_script_stub",
+      "image": "stills/cjk_script_stub.png",
+      "family": "script",
+      "expected_observations": ["cjk_script_signage"],
+      "expected_countries": ["JP", "KR", "CN"],
+      "notes": "Script-family fixture; inject claims in unit tests."
+    },
+    {
+      "id": "latin_script_stub",
+      "image": "stills/latin_script_stub.png",
+      "family": "script",
+      "expected_observations": ["latin_script_signage"],
+      "expected_countries": [],
+      "notes": "Latin script is broadly non-diagnostic; empty expected country set."
+    }
+  ]
+}

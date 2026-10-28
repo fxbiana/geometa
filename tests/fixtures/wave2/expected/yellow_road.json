@@ -1,0 +1,5 @@
+{
+  "id": "yellow_road",
+  "expected_observations": ["possible_yellow_marking"],
+  "expected_countries": ["US", "CA"]
+}

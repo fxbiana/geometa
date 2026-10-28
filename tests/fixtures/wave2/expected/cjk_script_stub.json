@@ -1,0 +1,5 @@
+{
+  "id": "cjk_script_stub",
+  "expected_observations": ["cjk_script_signage"],
+  "expected_countries": ["JP", "KR", "CN"]
+}

@@ -1,0 +1,5 @@
+{
+  "id": "utility_pole_stub",
+  "expected_observations": ["utility_pole_present"],
+  "expected_countries": ["JP"]
+}
