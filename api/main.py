@@ -16,6 +16,7 @@ Authentication note
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from api import __version__
 from api.routers import analyses, health, metas, practice, progress
@@ -28,6 +29,21 @@ app = FastAPI(
         "practice/progress endpoints are stubs."
     ),
     version=__version__,
+)
+
+# The unpacked Chrome extension calls this API from a chrome-extension origin.
+# Local Next.js dev origins stay allowed; other websites do not.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    ],
+    allow_origin_regex=r"chrome-extension://[a-p]{32}",
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 app.include_router(health.router)

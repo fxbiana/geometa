@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "GeoMeta",
+  "version": "0.1.0",
+  "description": "Show claim-backed country scores from a local GeoMeta analysis. Does not submit GeoGuessr guesses.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAm3z2a1t4fnxo31qfff7ps7k9OKHzdZRwCvpAnRvQghX+DfJGWpvRt78fy2Fg8xp7e1fzy1bPm+0SnHyi/c393bI1ULhLHm9pthU9VKbgNlDgPKcCa7QTynWpGzF1vR7iLExjVnzXnZ/03y2HAhV8Km2ELeqelkYQo0XoTuKp4VN4fYa7Dwadkckl0Kg/bJYmaOu7yXe9Z7wfYg5pJgNrl7f9fWloLmw/kChk3y+ou9/BVg89Q1Y/YPNBTW00ruwYaDb2Sn+tfOeciTiZziT31vxMB+Rr2ujTXH8NibPk5oHv8Mqxjxpp1jeh+P0lXS7DGEkS7v0eccbN4LtTCCkuZQIDAQAB",
+  "action": {
+    "default_title": "GeoMeta analysis",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*"
+  ]
+}
