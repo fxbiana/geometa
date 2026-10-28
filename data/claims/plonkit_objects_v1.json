@@ -1,0 +1,100 @@
+{
+  "pack_id": "plonkit-objects-v1",
+  "source_guide": "https://www.plonkit.net/guide",
+  "description": "Small PROVISIONAL Plonkit-sourced claim pack for bollards and road markings. Country sets are intentionally tiny teaching stubs for the observation→claim bridge — not calibrated geography.",
+  "aliases": {
+    "bollard": "object_bollard",
+    "bollard_detected": "object_bollard",
+    "object_bollard_unspecified": "object_bollard",
+    "road_marking": "object_road_marking",
+    "road_marking_detected": "object_road_marking",
+    "object_road_marking_unspecified": "object_road_marking"
+  },
+  "alias_notes": "Aliases map Detector-shaped observation_type strings onto pack patterns. possible_yellow_marking stays a first-class ROAD_CLAIMS_V1 pattern (not aliased) so yellow road detections do not double-emit with object_road_marking_yellow_center. Generic bollard/road_marking patterns intentionally have empty supports/weakens so unmatched styles emit no country.",
+  "claims": [
+    {
+      "id": "claim:object:bollard:generic:v1",
+      "observation_pattern": "object_bollard",
+      "geographic_scope": "broad",
+      "diagnosticity": 0.08,
+      "reliability": 0.45,
+      "supports": [],
+      "weakens": [],
+      "feature_key": "bollard",
+      "production_ready": true,
+      "review_status": "approved",
+      "claim_truth_confidence": 0.15,
+      "notes": "PROVISIONAL: generic Detector observation object_bollard / meta_id bollard with no subtype. Empty supports and weakens — unmatched bollard style must not invent a country. Source: Plonk It guide https://www.plonkit.net/guide (bollard metas are country-specific; see Denmark/Finland/Norway/Sweden pages)."
+    },
+    {
+      "id": "claim:object:bollard:denmark_style:v1",
+      "observation_pattern": "object_bollard_denmark_style",
+      "geographic_scope": "country",
+      "diagnosticity": 0.55,
+      "reliability": 0.50,
+      "supports": ["DK"],
+      "weakens": [],
+      "feature_key": "bollard",
+      "production_ready": true,
+      "review_status": "approved",
+      "claim_truth_confidence": 0.40,
+      "notes": "PROVISIONAL: white bollard with yellow reflector and a dark orange stripe is described as unique to Denmark on Plonk It Denmark (https://www.plonkit.net/denmark). Small support set for pipeline testing; green variant also noted there. Detector subtype mapping is provisional."
+    },
+    {
+      "id": "claim:object:bollard:nordic_black_white:v1",
+      "observation_pattern": "object_bollard_nordic_black_white",
+      "geographic_scope": "region",
+      "diagnosticity": 0.30,
+      "reliability": 0.40,
+      "supports": ["FI", "NO", "SE"],
+      "weakens": [],
+      "feature_key": "bollard",
+      "production_ready": true,
+      "review_status": "approved",
+      "claim_truth_confidence": 0.25,
+      "notes": "PROVISIONAL / LOW CONFIDENCE: coarse black-and-white roadside bollard family common across Nordic Plonk It pages — Finland long black-and-white with diagonal strip (https://www.plonkit.net/finland), Norway thin curved with reflector in a black parallelogram (https://www.plonkit.net/norway), Sweden black-and-white typically with grey reflector (https://www.plonkit.net/sweden). Does not distinguish FI/NO/SE; prefer country-specific patterns when Detector subtypes exist."
+    },
+    {
+      "id": "claim:object:road_marking:generic:v1",
+      "observation_pattern": "object_road_marking",
+      "geographic_scope": "broad",
+      "diagnosticity": 0.08,
+      "reliability": 0.45,
+      "supports": [],
+      "weakens": [],
+      "feature_key": "road_marking",
+      "production_ready": true,
+      "review_status": "approved",
+      "claim_truth_confidence": 0.15,
+      "notes": "PROVISIONAL: generic Detector observation object_road_marking / meta_id road_marking with no colour/style subtype. Empty supports and weakens — unmatched marking style emits no country. Source: Plonk It guide https://www.plonkit.net/guide (road-line colour and dash style are country-specific)."
+    },
+    {
+      "id": "claim:object:road_marking:yellow_center:v1",
+      "observation_pattern": "object_road_marking_yellow_center",
+      "geographic_scope": "country",
+      "diagnosticity": 0.35,
+      "reliability": 0.40,
+      "supports": ["US", "CA"],
+      "weakens": [],
+      "feature_key": "road_marking",
+      "production_ready": true,
+      "review_status": "approved",
+      "claim_truth_confidence": 0.30,
+      "notes": "PROVISIONAL / LOW CONFIDENCE: yellow centre-line style markings are common in North America among other places. Sibling to ROAD_CLAIMS_V1 possible_yellow_marking. Cited from Plonk It Canada (https://www.plonkit.net/canada — single/double yellow centre lines) and the Plonk It guide (https://www.plonkit.net/guide); US coverage similarly uses yellow centre lines. Small support set only; not a worldwide rule (Finland/Norway also document yellow/orange middles)."
+    },
+    {
+      "id": "claim:object:road_marking:orange_center:v1",
+      "observation_pattern": "object_road_marking_orange_center",
+      "geographic_scope": "country",
+      "diagnosticity": 0.40,
+      "reliability": 0.40,
+      "supports": ["NO"],
+      "weakens": ["SE"],
+      "feature_key": "road_marking",
+      "production_ready": true,
+      "review_status": "approved",
+      "claim_truth_confidence": 0.30,
+      "notes": "PROVISIONAL: Norway Plonk It page notes yellow middle lines with a distinct orange tint; Sweden never has yellow middle lines (https://www.plonkit.net/norway, https://www.plonkit.net/sweden). Weakens SE only as a Nordic contrast stub. Detector colour subtype mapping is provisional."
+    }
+  ]
+}
