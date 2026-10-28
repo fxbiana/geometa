@@ -220,6 +220,11 @@ __marimo__/
 # Local external exploratory dataset
 images/compressed_dataset/
 
+# YOLO / ultralytics downloaded weights (Wave-2 object detector)
+*.pt
+weights/
+runs/
+
 # Next.js (web/)
 web/node_modules/
 web/.next/
