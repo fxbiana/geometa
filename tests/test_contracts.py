@@ -6,10 +6,13 @@ from src.contracts import (
     AnalysisResult,
     AnalysisStatus,
     Availability,
+    DetectorMetaId,
     Evidence,
     EvidenceDirection,
     ExplanationInput,
     ImageRegion,
+    Observation,
+    ObservationState,
     SourceInput,
     RegionType,
 )
@@ -82,3 +85,51 @@ def test_explanation_returns_recorded_analysis_without_new_evidence():
 def test_meta_detection_does_not_return_input_independent_hardcoded_metas():
     assert meta_detection(Image.new("RGB", (6, 6), (100, 100, 100))) == []
     assert meta_detection(Image.new("RGB", (6, 6), (255, 0, 0))) == []
+
+
+def test_observation_accepts_detector_meta_and_claim_fields():
+    region = ImageRegion("s", RegionType.BOUNDING_BOX, (0, 0, 2, 2))
+    observation = Observation(
+        id="o1",
+        analysis_id="a",
+        source_id="s",
+        region=region,
+        observation_type="bollard_detected",
+        value=True,
+        confidence=0.75,
+        state=ObservationState.POSITIVE,
+        supporting_measurement_ids=(),
+        meta_id=DetectorMetaId.BOLLARD.value,
+        subtype="concrete",
+        supports=("FI",),
+        weakens=("JP",),
+        diagnosticity=0.4,
+    )
+    assert observation.meta_id == "bollard"
+    assert observation.subtype == "concrete"
+    assert observation.supports == ("FI",)
+    assert observation.weakens == ("JP",)
+    assert observation.diagnosticity == 0.4
+    assert observation.region.region_type is RegionType.BOUNDING_BOX
+
+
+def test_observation_rejects_invalid_diagnosticity():
+    region = ImageRegion("s", RegionType.FULL_IMAGE)
+    try:
+        Observation(
+            id="o1",
+            analysis_id="a",
+            source_id="s",
+            region=region,
+            observation_type="script_detected",
+            value=True,
+            confidence=0.5,
+            state=ObservationState.POSITIVE,
+            supporting_measurement_ids=(),
+            meta_id=DetectorMetaId.SCRIPT.value,
+            diagnosticity=1.5,
+        )
+    except ValueError as exc:
+        assert "diagnosticity" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for diagnosticity")

@@ -6,7 +6,16 @@ from pathlib import Path
 from PIL import Image
 
 from src.claims import CLAIM_CATALOG_VERSION
-from src.contracts import AnalysisStatus, SourceInput
+from src.contracts import (
+    AnalysisStatus,
+    DetectorMetaId,
+    ImageRegion,
+    Observation,
+    ObservationState,
+    RegionType,
+    SourceInput,
+)
+from src.features.road import RoadAnalysis
 from src.pipeline import analyze_source, run_analysis
 from src.source import source_hash
 
@@ -78,6 +87,41 @@ def test_analyze_source_invalid_bytes_fails_without_crash():
     assert result.measurements == ()
     assert result.observations == ()
     assert result.evidence == ()
+
+
+def test_fake_detector_observation_through_analyze_source_is_insufficient(monkeypatch):
+    """Extended Observation shape flows through analyze_source; unmatched claim → abstain."""
+
+    def fake_analyze_road(image, *, source_id, analysis_id, detector_version="prototype-1"):
+        del image, detector_version
+        region = ImageRegion(source_id, RegionType.BOUNDING_BOX, (1, 1, 4, 4))
+        observation = Observation(
+            id=f"{analysis_id}:observation:bollard_stub",
+            analysis_id=analysis_id,
+            source_id=source_id,
+            region=region,
+            observation_type="bollard_detected",
+            value=True,
+            confidence=0.9,
+            state=ObservationState.POSITIVE,
+            supporting_measurement_ids=(),
+            meta_id=DetectorMetaId.BOLLARD.value,
+            subtype="concrete",
+            supports=(),
+            weakens=(),
+            diagnosticity=0.0,
+        )
+        return RoadAnalysis(measurements=(), observations=(observation,))
+
+    monkeypatch.setattr("src.pipeline.analyze_road", fake_analyze_road)
+    result = analyze_source(SourceInput(image_bytes(), "fixture.png"))
+    assert result.status is AnalysisStatus.INSUFFICIENT_EVIDENCE
+    assert len(result.observations) == 1
+    assert result.observations[0].meta_id == DetectorMetaId.BOLLARD.value
+    assert result.observations[0].subtype == "concrete"
+    assert result.observations[0].region.region_type is RegionType.BOUNDING_BOX
+    assert result.evidence == ()
+    assert result.candidates == ()
 
 
 def test_pipeline_modules_never_import_ground_truth():

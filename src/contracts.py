@@ -34,6 +34,14 @@ class ObservationState(str, Enum):
     CONFLICTING = "conflicting"
 
 
+class DetectorMetaId(str, Enum):
+    """Wave-1 detector meta identifiers a detector may report on an Observation."""
+
+    BOLLARD = "bollard"
+    ROAD_MARKING = "road_marking"
+    SCRIPT = "script"
+
+
 class EvidenceDirection(str, Enum):
     SUPPORTING = "supporting"
     WEAKENING = "weakening"
@@ -101,6 +109,15 @@ class Measurement:
 
 @dataclass(frozen=True)
 class Observation:
+    """Visual detector output — not geographic evidence by itself.
+
+    Detectors may report a ``meta_id`` (e.g. bollard, road_marking, script), an
+    optional ``subtype``, ``confidence``, and the image ``region``.  Optional
+    claim-shaped fields (``supports``, ``weakens``, ``diagnosticity``) mirror
+    the claim catalog vocabulary so later waves can attach provisional scope
+    without collapsing Observation into Evidence.
+    """
+
     id: str
     analysis_id: str
     source_id: str
@@ -110,12 +127,21 @@ class Observation:
     confidence: float
     state: ObservationState
     supporting_measurement_ids: Tuple[str, ...]
+    meta_id: Optional[str] = None
+    subtype: Optional[str] = None
+    supports: Tuple[str, ...] = field(default_factory=tuple)
+    weakens: Tuple[str, ...] = field(default_factory=tuple)
+    diagnosticity: float = 0.0
     detector_version: str = "prototype-1"
     schema_version: str = "observation-1"
 
     def __post_init__(self) -> None:
         if not 0 <= self.confidence <= 1:
             raise ValueError("observation confidence must be between 0 and 1")
+        if not 0 <= self.diagnosticity <= 1:
+            raise ValueError("observation diagnosticity must be between 0 and 1")
+        if self.meta_id is not None and not self.meta_id.strip():
+            raise ValueError("observation meta_id must not be empty when set")
 
 
 @dataclass(frozen=True)
