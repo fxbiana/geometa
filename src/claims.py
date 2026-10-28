@@ -1,16 +1,28 @@
-"""Versioned geographic claims for road observations.
+"""Versioned geographic claims for road and object observations.
 
 Only approved, production-ready claim versions may emit Evidence.  Country
 associations in this catalog are intentionally SMALL and marked provisional /
 low-confidence — they exist to exercise the observation → evidence bridge, not
 to assert calibrated geography.
+
+The default catalog is additive: ROAD_CLAIMS_V1 plus the checked-in Plonkit
+objects pack (bollards / road markings).  Pack-only and road-only catalogs
+remain addressable by version string.
 """
 
+from __future__ import annotations
+
+import json
 from dataclasses import dataclass, field
-from typing import Optional, Sequence, Tuple
+from pathlib import Path
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
 
 
 CLAIM_CATALOG_VERSION = "road-claims-v1"
+ROAD_CLAIMS_CORE_VERSION = "road-claims-v1-core"
+PLONKIT_OBJECTS_PACK_VERSION = "plonkit-objects-v1"
+
+_PACK_PATH = Path(__file__).resolve().parent.parent / "data" / "claims" / "plonkit_objects_v1.json"
 
 
 @dataclass(frozen=True)
@@ -55,7 +67,10 @@ ROAD_CLAIMS_V1: Tuple[ClaimVersion, ...] = (
         notes=(
             "PROVISIONAL / LOW CONFIDENCE: yellow center-line style markings are "
             "common in parts of North America among other places.  Small support "
-            "set for pipeline testing only; not a worldwide rule."
+            "set for pipeline testing only; not a worldwide rule.  Source: Plonk "
+            "It guide https://www.plonkit.net/guide and Canada page "
+            "https://www.plonkit.net/canada.  Detector-aligned sibling pattern: "
+            "object_road_marking_yellow_center in plonkit-objects-v1."
         ),
     ),
     ClaimVersion(
@@ -94,8 +109,57 @@ ROAD_CLAIMS_V1: Tuple[ClaimVersion, ...] = (
     ),
 )
 
-_CATALOGS = {
-    CLAIM_CATALOG_VERSION: ROAD_CLAIMS_V1,
+
+def _as_str_tuple(value: Any) -> Tuple[str, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    return tuple(str(item) for item in value)
+
+
+def _claim_from_pack_row(row: Mapping[str, Any]) -> ClaimVersion:
+    return ClaimVersion(
+        id=str(row["id"]),
+        observation_pattern=str(row["observation_pattern"]),
+        geographic_scope=str(row.get("geographic_scope", "country")),
+        diagnosticity=float(row["diagnosticity"]),
+        reliability=float(row["reliability"]),
+        supports=_as_str_tuple(row.get("supports")),
+        weakens=_as_str_tuple(row.get("weakens")),
+        feature_key=(str(row["feature_key"]) if row.get("feature_key") is not None else None),
+        production_ready=bool(row.get("production_ready", True)),
+        review_status=str(row.get("review_status", "approved")),
+        claim_truth_confidence=float(row.get("claim_truth_confidence", 0.0)),
+        notes=str(row.get("notes") or row.get("note") or ""),
+    )
+
+
+def load_claim_pack(path: Path = _PACK_PATH) -> Tuple[ClaimVersion, ...]:
+    """Load an on-disk claim pack JSON into ClaimVersion rows."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    rows = payload.get("claims") or []
+    return tuple(_claim_from_pack_row(row) for row in rows)
+
+
+def load_observation_aliases(path: Path = _PACK_PATH) -> Dict[str, str]:
+    """Return observation_type aliases declared by the Plonkit objects pack."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    raw = payload.get("aliases") or {}
+    return {str(src): str(dst) for src, dst in raw.items()}
+
+
+PLONKIT_OBJECTS_V1: Tuple[ClaimVersion, ...] = load_claim_pack()
+OBSERVATION_ALIASES: Dict[str, str] = load_observation_aliases()
+
+# Default catalog stays under road-claims-v1 for API stability, but is additive:
+# legacy road patterns plus Plonkit object patterns.
+_DEFAULT_CATALOG: Tuple[ClaimVersion, ...] = ROAD_CLAIMS_V1 + PLONKIT_OBJECTS_V1
+
+_CATALOGS: Dict[str, Tuple[ClaimVersion, ...]] = {
+    CLAIM_CATALOG_VERSION: _DEFAULT_CATALOG,
+    ROAD_CLAIMS_CORE_VERSION: ROAD_CLAIMS_V1,
+    PLONKIT_OBJECTS_PACK_VERSION: PLONKIT_OBJECTS_V1,
 }
 
 
@@ -107,20 +171,33 @@ def catalog_claims(claim_version: str = CLAIM_CATALOG_VERSION) -> Tuple[ClaimVer
     return claims
 
 
+def resolve_observation_pattern(observation_type: str) -> str:
+    """Map Detector aliases onto canonical pack / road observation patterns."""
+    return OBSERVATION_ALIASES.get(observation_type, observation_type)
+
+
 def claims_for_observation(
     observation_type: str,
     claim_version: str = CLAIM_CATALOG_VERSION,
     *,
     feature_key: Optional[str] = None,
 ) -> Tuple[ClaimVersion, ...]:
-    """Return approved production-ready claims matching an observation type."""
+    """Return approved production-ready claims matching an observation type.
+
+    Unknown / unmatched observation patterns return an empty tuple.  Pack
+    aliases (e.g. ``bollard_detected`` → ``object_bollard``) are resolved
+    before matching.  Matching is exact on ``observation_pattern`` after alias
+    resolution; generic ``object_bollard`` / ``object_road_marking`` claims keep
+    empty country sets so they never invent geography.
+    """
     del feature_key  # reserved for future feature-key matching
+    pattern = resolve_observation_pattern(observation_type)
     return tuple(
         claim
         for claim in catalog_claims(claim_version)
         if claim.production_ready
         and claim.review_status == "approved"
-        and claim.observation_pattern == observation_type
+        and claim.observation_pattern == pattern
     )
 
 
