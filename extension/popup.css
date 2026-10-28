@@ -1,0 +1,110 @@
+:root {
+  color: #142833;
+  background: #e6ebe8;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  width: 360px;
+  margin: 0;
+  padding: 14px 14px 16px;
+}
+
+.brand {
+  margin: 0;
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+
+.brand span { color: #8f6828; }
+
+.note,
+.footnote,
+.empty {
+  color: #2a4554;
+  line-height: 1.4;
+}
+
+.note { margin: 4px 0 12px; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+input[type="url"] {
+  width: 100%;
+  border: 1px solid rgba(20, 40, 51, 0.18);
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: #f4f7f5;
+  color: inherit;
+}
+
+.health,
+.message { min-height: 1.2em; margin: 8px 0; }
+
+.health-ok { color: #1f4a58; }
+.health-down { color: #8a3d2f; }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+button,
+.file-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #1f4a58;
+  color: #f4f7f5;
+  cursor: pointer;
+}
+
+.file-button { background: #8f6828; }
+
+.file-button input { display: none; }
+
+button:disabled,
+.file-button.disabled { opacity: 0.55; cursor: wait; }
+
+h2 {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.status {
+  margin: 4px 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f4f7f5;
+}
+
+.status-ok { border-left: 3px solid #1f4a58; }
+.status-abstain { border-left: 3px solid #8f6828; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 4px 2px;
+  border-bottom: 1px solid rgba(20, 40, 51, 0.12);
+}
+
+ul { margin: 0; padding-left: 18px; }
+
+.footnote { font-size: 11px; }
