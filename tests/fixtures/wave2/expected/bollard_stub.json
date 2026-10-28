@@ -1,0 +1,5 @@
+{
+  "id": "bollard_stub",
+  "expected_observations": ["bollard_present"],
+  "expected_countries": ["IE"]
+}
