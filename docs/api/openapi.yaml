@@ -424,6 +424,14 @@ components:
         - absent
         - conflicting
 
+    DetectorMetaId:
+      type: string
+      description: Wave-1 detector meta identifiers for Observation.meta_id.
+      enum:
+        - bollard
+        - road_marking
+        - script
+
     EvidenceDirection:
       type: string
       enum:
@@ -569,7 +577,9 @@ components:
       type: object
       description: |
         Visual observation only — not geographic evidence. Mirrors
-        `contracts.Observation`.
+        `contracts.Observation`. Detectors may report meta_id, subtype,
+        confidence, and region; optional supports/weakens/diagnosticity
+        mirror claim-catalog vocabulary without becoming Evidence.
       required:
         - id
         - analysis_id
@@ -602,6 +612,28 @@ components:
           type: array
           items:
             type: string
+        meta_id:
+          type: string
+          nullable: true
+          description: Detector meta id (e.g. bollard, road_marking, script).
+        subtype:
+          type: string
+          nullable: true
+        supports:
+          type: array
+          items:
+            type: string
+          default: []
+        weakens:
+          type: array
+          items:
+            type: string
+          default: []
+        diagnosticity:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 0
         detector_version:
           type: string
           default: prototype-1

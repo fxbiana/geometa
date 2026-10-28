@@ -67,6 +67,11 @@ def analysis_result_to_model(
                 confidence=item.confidence,
                 state=item.state.value if hasattr(item.state, "value") else item.state,
                 supporting_measurement_ids=list(item.supporting_measurement_ids),
+                meta_id=item.meta_id,
+                subtype=item.subtype,
+                supports=list(item.supports),
+                weakens=list(item.weakens),
+                diagnosticity=item.diagnosticity,
                 detector_version=item.detector_version,
                 schema_version=item.schema_version,
             )

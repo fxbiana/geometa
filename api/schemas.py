@@ -32,6 +32,12 @@ class ObservationState(str, Enum):
     CONFLICTING = "conflicting"
 
 
+class DetectorMetaId(str, Enum):
+    BOLLARD = "bollard"
+    ROAD_MARKING = "road_marking"
+    SCRIPT = "script"
+
+
 class EvidenceDirection(str, Enum):
     SUPPORTING = "supporting"
     WEAKENING = "weakening"
@@ -85,6 +91,11 @@ class ObservationModel(BaseModel):
     confidence: float = Field(ge=0, le=1)
     state: ObservationState
     supporting_measurement_ids: List[str]
+    meta_id: Optional[str] = None
+    subtype: Optional[str] = None
+    supports: List[str] = Field(default_factory=list)
+    weakens: List[str] = Field(default_factory=list)
+    diagnosticity: float = Field(default=0.0, ge=0, le=1)
     detector_version: str = "prototype-1"
     schema_version: str = "observation-1"
 
