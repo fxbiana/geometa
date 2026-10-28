@@ -1,0 +1,5 @@
+{
+  "id": "latin_script_stub",
+  "expected_observations": ["latin_script_signage"],
+  "expected_countries": []
+}
